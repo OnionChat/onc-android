@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph5"
+    app:startDestination="@id/SelectBroadCastNameFragment">
+
+    <fragment
+        android:id="@+id/SelectBroadCastNameFragment"
+        android:name="com.onionchat.dr0id.ui.broadcast.SelectBroadCastNameFragment"
+        android:label="@string/fragment_create_broadcast_label"
+        tools:layout="@layout/fragment_broadcast_name">
+
+        <action
+            android:id="@+id/action_selectname_to_selectreceivers"
+            app:destination="@id/SelectBroadCastReceiversFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/SelectBroadCastReceiversFragment"
+        android:name="com.onionchat.dr0id.ui.broadcast.SelectBroadCastReceiversFragment"
+        android:label="@string/second_fragment_label"
+        tools:layout="@layout/fragment_broadcast_receivers">
+
+        <action
+            android:id="@+id/action_Second2Fragment_to_First2Fragment"
+            app:destination="@id/SelectBroadCastNameFragment" />
+    </fragment>
+</navigation>

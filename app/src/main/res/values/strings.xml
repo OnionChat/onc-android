@@ -1,0 +1,45 @@
+<resources>
+    <string name="app_name">OnionChat</string>
+    <string name="title_activity_contact_list">ContactList</string>
+    <!-- Strings used for fragments for navigation -->
+    <string name="first_fragment_label">Welcome</string>
+    <string name="second_fragment_label">Second Fragment</string>
+    <string name="third_fragment_label">Third Fragment</string>
+    <string name="next">Next</string>
+    <string name="create">Create</string>
+
+    <string name="fragment_broadcast_enter_name_hint">Enter your new broadcast name here...</string>
+    <string name="hello_second_fragment">Hello second fragment. Arg: %1$s</string>
+    <string name="title_activity_chat">ChatActivity</string>
+    <string name="message">message</string>
+    <string name="send">send</string>
+    <string name="debug_label">text</string>
+    <string name="advertise">advertise</string>
+    <string name="discover">discover</string>
+    <string name="qr_code">QR code</string>
+    <string name="enter_your_info">enter your info</string>
+    <string name="generate_qr_code">generate</string>
+    <string name="title_activity_info">InfoActivity</string>
+    <string name="connected">Connected</string>
+    <string name="exit_service">Exit Service</string>
+    <string name="really_delete_message">Really delete user?</string>
+    <string name="really_delete_title">Delete User</string>
+    <string name="title_activity_on_boarding_activtiy">OnBoardingActivtiy</string>
+    <string name="fragment_first_title_text">Welcome to OnionChat</string>
+    <string name="into_page_1">We\'ll guide you now through the setup of OnionChat.\n\nThanks for downloading.</string>
+    <string name="fragment_second_title_text">The onion network</string>
+    <string name="fragment_second_description_text">OnionChat is a <bold>Peer-to-Peer</bold> Chat application using the onion/tor network.\nThis allows users communicate anonymously without a central server infrastructure.\nAlso this app doesn\'t use google play services to receive push messages. Because of that OnionChat is using a background Service. You can exit this service whenever you like.However, this means you cannot receive any message if you kill this service.\n\nRead more <a href="https://www.google.de">here</a> >
+</string>
+    <string name="fragment_third_title_text">Accept EULA</string>
+    <string name="fragment_third_description_text">bla bla bla EULA bla bla</string>
+    <string name="key_notifications">notifications</string>
+    <string name="key_ping_notifications">ping_notifications</string>
+    <string name="key_enable_web">enable_web</string>
+    <string name="key_enable_message_read">enable_message_read</string>
+    <string name="title_activity_create_broad_cast">CreateBroadCastActivity</string>
+    <string name="key_enable_message_forwarding">message_forwarding</string>
+    <string name="key_onboarding">shall_do_onboarding</string>
+    <string name="key_allow_broadcast_adding">allow_broadcast_adding</string>
+    <string name="drag_here">Drag here..</string>
+    <string name="fragment_create_broadcast_label">Create Broadcast</string>
+</resources>

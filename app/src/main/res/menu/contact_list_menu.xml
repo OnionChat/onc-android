@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    tools:context="saveourcar.soc.MainActivity">
+
+    <item
+        app:showAsAction="always"
+        android:id="@+id/ping_contacts"
+        android:title="Ping Contacts"
+        android:icon="@drawable/outline_change_circle_black_48"/>
+    <item
+        android:id="@+id/new_circuit"
+        android:title="New Circuit"
+        android:icon="@android:drawable/ic_menu_directions" />
+    <item
+        android:id="@+id/reconnect"
+        android:title="Reconnect"
+        android:icon="@android:drawable/ic_menu_directions"/>
+    <item
+        android:id="@+id/settings"
+        android:title="Settings"
+        android:icon="@android:drawable/ic_menu_manage"/>
+    <item
+        android:id="@+id/info"
+        android:title="Info"
+        android:icon="@android:drawable/ic_menu_info_details"/>
+    <item
+        android:id="@+id/about"
+        android:title="About" />
+
+</menu>

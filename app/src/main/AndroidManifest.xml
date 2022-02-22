@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    package="com.onionchat.dr0id">
+
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <application
+        android:name=".OnionChatApplication"
+        android:allowBackup="true"
+        android:icon="@drawable/onion_pixel_green"
+        android:label="@string/app_name"
+        android:roundIcon="@drawable/onion_pixel_green"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.OnionChat"
+        android:usesCleartextTraffic="true"
+        >
+        <activity
+            android:name=".ui.broadcast.EditBroadCastActivity"
+            android:exported="true" />
+        <activity
+            android:name=".ui.broadcast.CreateBroadCastActivity"
+            android:exported="true"
+            android:label="@string/title_activity_create_broad_cast"
+            android:theme="@style/Theme.OnionChat.NoActionBar" />
+        <activity
+            android:name=".ui.onboarding.OnBoardingActivtiy"
+            android:exported="true"
+            android:label="@string/title_activity_on_boarding_activtiy"
+            android:theme="@style/Theme.OnionChat.NoActionBar" />
+        <activity
+            android:name=".ui.web.OnionWebActivity"
+            android:exported="true" >
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="onionchat" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".ui.contactdetails.ContactDetailsActivity"
+            android:exported="true"
+            android:screenOrientation="portrait" />
+
+        <service
+            android:name=".service.OnionChatConnectionService"
+            android:enabled="true" />
+
+        <activity
+            android:name=".ui.info.InfoActivtiy"
+            android:exported="true" />
+        <activity
+            android:name=".qr.QrGenerator"
+            android:exported="true" />
+        <activity
+            android:name=".qr.QrScanner"
+            android:exported="true" />
+        <activity
+            android:name=".ui.chat.ChatWindow"
+            android:exported="true"
+            android:screenOrientation="portrait" />
+        <activity
+            android:name=".ui.settings.SettingsActivity"
+            android:exported="true"
+            android:screenOrientation="portrait" />
+        <activity
+            android:name=".ui.contactlist.ContactListWindow"
+            android:exported="true"
+            android:label="@string/title_activity_contact_list"
+            android:screenOrientation="portrait" />
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name="com.journeyapps.barcodescanner.CaptureActivity"
+            android:clearTaskOnLaunch="true"
+            android:screenOrientation="portrait"
+            android:stateNotNeeded="true"
+            tools:replace="android:screenOrientation" />
+    </application>
+
+</manifest>
