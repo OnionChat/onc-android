@@ -1,4 +1,10 @@
 package com.onionchat.localstorage.userstore
 
-class UserJoined {
+import androidx.room.Embedded
+import androidx.room.Relation
+
+data class UserJoined(
+    @Embedded val user: User,
+    @Relation(parentColumn = "id", entityColumn = "userid", entity = SymAlias::class) val symaliases: List<SymAlias>
+) {
 }

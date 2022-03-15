@@ -7,19 +7,19 @@ import androidx.room.Query
 
 @Dao
 interface BlockedConversationDao {
-    @Query("SELECT * FROM broadcastmember")
-    fun getAll(): List<BroadcastMember>
+    @Query("SELECT * FROM blockedconversation")
+    fun getAll(): List<BlockedConversation>
 
-    @Query("SELECT * FROM broadcastmember WHERE broadcast_id IN (:broadcastIds)")
-    fun loadAllByIds(broadcastIds: Array<String>): List<BroadcastMember>
+    @Query("SELECT * FROM blockedconversation WHERE conversation_id IN (:conversation_ids)")
+    fun loadAllByConversationIds(conversation_ids: Array<String>): List<BlockedConversation>
 
 //    @Query("SELECT * FROM user WHERE first_name LIKE :first AND " +
 //            "last_name LIKE :last LIMIT 1")
 //    fun findByName(first: String, last: String): User
 
     @Insert
-    fun insertAll(vararg broadcastMember: BroadcastMember)
+    fun insertAll(vararg blockedConversation: BlockedConversation)
 
     @Delete
-    fun delete(broadcastMember: BroadcastMember)
+    fun delete(blockedConversation: BlockedConversation)
 }

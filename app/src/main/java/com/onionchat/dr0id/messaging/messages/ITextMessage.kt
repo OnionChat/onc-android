@@ -1,4 +1,5 @@
 package com.onionchat.dr0id.messaging.messages
 
-class ITextMessage {
+interface ITextMessage {
+    fun getText(): TextMessageData
 }

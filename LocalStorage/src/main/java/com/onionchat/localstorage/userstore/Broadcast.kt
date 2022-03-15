@@ -10,7 +10,7 @@ data class Broadcast(@PrimaryKey val id: String, @ColumnInfo(name = "label") val
 
     companion object {
         fun generateId(label: String, uid: String): String {
-            return IDGenerator.toVisibleId(label + uid)
+            return IDGenerator.toHashedId(label + uid)
         }
     }
 }

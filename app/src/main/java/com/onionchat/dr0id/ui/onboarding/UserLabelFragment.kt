@@ -6,17 +6,23 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import com.onionchat.common.Crypto
 import com.onionchat.common.SettingsManager
 import com.onionchat.dr0id.MainActivity
 import com.onionchat.dr0id.R
 import com.onionchat.dr0id.databinding.FragmentThirdBinding
+import com.onionchat.dr0id.databinding.UserLabelFragmentBinding
+import com.onionchat.localstorage.EncryptedLocalStorage
 
 /**
  * A simple [Fragment] subclass as the second destination in the navigation.
  */
 class UserLabelFragment : Fragment() {
 
-    private var _binding: FragmentThirdBinding? = null
+    private val regexPattern = "^(?=.{5,20}$)(?!.*[._-]{2})[a-z][a-z0-9._-]*[a-z0-9]$"
+
+
+    private var _binding: UserLabelFragmentBinding? = null
 
     // This property is only valid between onCreateView and
     // onDestroyView.
@@ -27,7 +33,7 @@ class UserLabelFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
 
-        _binding = FragmentThirdBinding.inflate(inflater, container, false)
+        _binding = UserLabelFragmentBinding.inflate(inflater, container, false)
         return binding.root
 
     }
@@ -38,10 +44,34 @@ class UserLabelFragment : Fragment() {
 //        binding.buttonSecond.setOnClickListener {
 //            findNavController().navigate(R.id.action_SecondFragment_to_FirstFragment)
 //        }
-        binding.buttonThird.setOnClickListener {
+        binding.userLabelFragmentButton.setOnClickListener {
             context?.let {
-                SettingsManager.setBooleanSetting(getString(R.string.key_onboarding), false, it)
-                startActivity(Intent(it, MainActivity::class.java))
+                //SettingsManager.setBooleanSetting(getString(R.string.key_onboarding), false, it)
+                //startActivity(Intent(it, MainActivity::class.java))
+                binding.userLabelFragmentEdit.text?.toString()?.let { label ->
+                    if (!label.matches(Regex(regexPattern))) {
+                        binding.userLabelFragmentEdit.error = "Doesn't match requirements"
+                    } else {
+                        binding.userLabelFragmentEdit.error = null
+                        Crypto.getMyPublicKey()?.let { cert ->
+                            context?.let {
+                                EncryptedLocalStorage(cert, Crypto.getMyKey(), it).apply {
+                                    if(!storeValue(getString(R.string.key_user_label), label)) {
+                                        binding.userLabelFragmentEdit.error = "Unable to store value"
+                                    } else {
+                                        SettingsManager.setBooleanSetting(getString(R.string.key_onboarding), false, it)
+                                        startActivity(Intent(it, MainActivity::class.java))
+                                    }
+                                }
+                            } ?: {
+                                binding.userLabelFragmentEdit.error = "Unexpected error"
+                            }
+                        }?: run{
+                            binding.userLabelFragmentEdit.error = "No crypto available"
+                        }
+
+                    }
+                }
             }
         }
     }

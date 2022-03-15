@@ -6,10 +6,28 @@
     android:layout_height="match_parent"
     tools:context=".stream.StreamingWindow">
 
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/stream_activity_username"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentLeft="true"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/stream_activity_status"
+        android:layout_centerInParent="true"
+        android:text="@string/connecting"/>
+
     <ImageButton
         android:id="@+id/start_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Start"
-        android:layout_centerHorizontal="true"/>
+        android:layout_centerHorizontal="true"
+        android:layout_alignParentBottom="true"
+        android:layout_margin="50dp"
+        android:src="@drawable/baseline_call_end_black_48"
+        android:backgroundTint="@android:color/holo_red_light"/>
 </RelativeLayout>

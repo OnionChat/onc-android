@@ -6,14 +6,14 @@ import android.graphics.Typeface.NORMAL
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.CheckBox
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.onionchat.dr0id.R
 import com.onionchat.localstorage.userstore.Conversation
-import com.onionchat.localstorage.userstore.User
 
-class ContactListAdapter(private val dataSet: List<Conversation>) :
+class ContactListAdapter(private val dataSet: List<Conversation>, private val selection: Boolean = false) :
     RecyclerView.Adapter<ContactListAdapter.ViewHolder>() {
     var mClickListener: ItemClickListener? = null
 
@@ -25,12 +25,14 @@ class ContactListAdapter(private val dataSet: List<Conversation>) :
         val textView: TextView
         val messageCounter: TextView
         val avatar: ImageView
+        val checkBox: CheckBox
 
         init {
             // Define click listener for the ViewHolder's View.
             textView = view.findViewById(R.id.contact_id)
             messageCounter = view.findViewById(R.id.unread_messages_count)
             avatar = view.findViewById(R.id.contact_avatar)
+            checkBox = view.findViewById(R.id.contact_checked)
             view.setOnClickListener {
                 if (mClickListener != null) mClickListener!!.onItemClick(view, adapterPosition)
             }
@@ -39,8 +41,6 @@ class ContactListAdapter(private val dataSet: List<Conversation>) :
                 true
             }
         }
-
-
     }
 
     // Create new views (invoked by the layout manager)
@@ -57,6 +57,16 @@ class ContactListAdapter(private val dataSet: List<Conversation>) :
 
         // Get element from your dataset at this position and replace the
         // contents of the view with that element
+        if (selection) {
+            viewHolder.checkBox.visibility = View.VISIBLE
+            if(dataSet[position].selected) {
+                viewHolder.checkBox.isChecked = true
+            }
+            viewHolder.checkBox.setOnCheckedChangeListener {i, v ->
+                dataSet[position].selected = viewHolder.checkBox.isChecked
+                mClickListener?.onCheckedChangeListener(position)
+            }
+        }
         viewHolder.textView.text = dataSet[position].getLabel()
         viewHolder.messageCounter.text = "" + dataSet[position].unreadMessages
         if (dataSet[position].unreadMessages > 0) {
@@ -88,5 +98,6 @@ class ContactListAdapter(private val dataSet: List<Conversation>) :
     interface ItemClickListener {
         fun onItemClick(view: View?, position: Int)
         fun onItemLongClick(view: View?, position: Int)
+        fun onCheckedChangeListener(position: Int)
     }
 }

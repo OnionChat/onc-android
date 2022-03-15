@@ -1,32 +1,37 @@
 package com.onionchat.localstorage.messagestore
 
-import androidx.room.Dao
-import androidx.room.Delete
-import androidx.room.Insert
-import androidx.room.Query
-import com.onionchat.localstorage.userstore.BroadcastMember
+import androidx.room.*
 
 @Dao
 interface EncryptedMessageDao {
     @Query("SELECT * FROM encryptedmessage")
-    fun getAll(): List<BroadcastMember>
+    fun getAll(): List<EncryptedMessage>
 
-    @Query("SELECT * FROM broadcastmember WHERE broadcast_id IN (:broadcastIds)")
-    fun loadAllByBroadcastIds(broadcastIds: Array<String>): List<BroadcastMember>
+    @Query("SELECT * FROM encryptedmessage WHERE hashed_from IN (:hashedUserIds) OR hashed_to IN (:hashedUserIds)")
+    fun loadAllByHashedUserIds(hashedUserIds: Array<String>): List<EncryptedMessage>
+
+    @Query("SELECT * FROM encryptedmessage WHERE status IN (:stati)")
+    fun loadAllByStatus(stati:List<Int>): List<EncryptedMessage>
+
+    @Query("SELECT * FROM encryptedmessage WHERE signature IN (:signatures)")
+    fun loadMessagesBySignaure(signatures: Array<String>): List<EncryptedMessage>
 
 //    @Query("SELECT * FROM user WHERE first_name LIKE :first AND " +
 //            "last_name LIKE :last LIMIT 1")
 //    fun findByName(first: String, last: String): User
 
     @Insert
-    fun insertAll(vararg broadcastMember: BroadcastMember)
+    fun insertAll(vararg encryptedMessage: EncryptedMessage)
 
     @Insert
-    fun insertAllMembers(broadcastMember: Array<BroadcastMember>)
+    fun insertAllMessages(encrytedMessages: Array<EncryptedMessage>)
+
+    @Update
+    fun update(encryptedMessage: EncryptedMessage)
 
     @Delete
-    fun delete(broadcastMember: BroadcastMember)
+    fun delete(encryptedMessage: EncryptedMessage)
 
-    @Query("DELETE FROM broadcastmember WHERE broadcast_id = (:broadcastId) AND user_id IN (:userIds)")
-    fun deleteMembersOfBroadcast(broadcastId: String, userIds :Array<String>)
+    @Query("DELETE FROM encryptedmessage WHERE message_id IN (:messageIds)")
+    fun deleteMessagesById(messageIds: Array<String>)
 }

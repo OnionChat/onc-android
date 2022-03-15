@@ -1,18 +1,12 @@
-package com.onionchat.dr0id.qr
+package com.onionchat.dr0id.adduser
 
 import androidx.appcompat.app.AppCompatActivity
 import android.graphics.Bitmap;
 import android.graphics.Point;
 import android.os.Bundle;
-import android.text.TextUtils;
-import android.util.Log;
 import android.view.Display;
-import android.view.View;
 import android.view.WindowManager;
-import android.widget.Button;
-import android.widget.EditText;
 import android.widget.ImageView;
-import android.widget.Toast;
 import com.google.zxing.WriterException;
 import androidmads.library.qrgenearator.QRGContents;
 import androidmads.library.qrgenearator.QRGEncoder;
@@ -21,7 +15,7 @@ import com.onionchat.dr0id.BuildConfig
 import com.onionchat.dr0id.R
 
 
-class QrGenerator : AppCompatActivity() {
+class QrViewer : AppCompatActivity() {
     // variables for imageview, edittext,
     // button, bitmap and qrencoder.
     private var qrCodeIV: ImageView? = null

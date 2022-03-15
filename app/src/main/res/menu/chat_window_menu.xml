@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     tools:context="saveourcar.soc.MainActivity">
 
     <item
-        app:showAsAction="always"
         android:id="@+id/ping_contact"
+        android:icon="@drawable/outline_change_circle_black_48"
         android:title="Ping"
-        android:icon="@drawable/outline_change_circle_black_48"/>
+        app:showAsAction="always" />
     <item
         android:id="@+id/open_web"
         android:icon="@drawable/outline_preview_black_48"
@@ -16,7 +16,7 @@
         app:showAsAction="always" />
     <item
         android:id="@+id/open_stream"
-        android:icon="@drawable/outline_campaign_black_24"
+        android:icon="@drawable/baseline_call_black_48"
         android:title="Web"
         app:showAsAction="always" />
 </menu>

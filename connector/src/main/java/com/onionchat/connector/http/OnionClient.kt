@@ -1,59 +1,104 @@
 package com.onionchat.connector.http
 
-import com.onionchat.common.Logging.d
-import com.onionchat.common.Logging.e
+import com.onionchat.common.Logging
 import info.guardianproject.netcipher.NetCipher
-import java.io.BufferedReader
-import java.io.BufferedWriter
-import java.io.InputStreamReader
-import java.io.OutputStreamWriter
+import java.io.*
+import java.net.HttpURLConnection
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
 
-object HttpClient {
+object OnionClient {
 
-    const val TAG = "HttpClient"
+    const val TAG = "OnionClient"
 
     private val clientExecutor = Executors.newCachedThreadPool()
 
+    private fun post(messageData: String, url: String): String {
+        val conn = NetCipher.getHttpURLConnection(url)
+        conn.setRequestProperty("User-Agent", "")
+        conn.readTimeout = 10000
+        conn.connectTimeout = 15000
+        conn.requestMethod = "POST"
+        //conn.setDoInput(true);
+        //conn.setDoOutput(true);
+        Logging.d(TAG, "post [+] Write data")
+        val writer = BufferedWriter(OutputStreamWriter(conn.outputStream))
+        writer.write(
+            messageData
+        )
+        writer.close()
+        Logging.d(TAG, "post [+] Read data")
+        val reader = BufferedReader(InputStreamReader(conn.inputStream))
+        var line: String? = "" // reads a line of text
+        val out = StringBuilder()
+        while (reader.readLine().also { line = it } != null) {
+            out.append(line)
+        }
+        reader.close()
+        Logging.d(TAG, "post [+] Message send done")
+        conn.disconnect()
+        return out.toString()
+    }
 
     fun postmessage(json: String, onc_addr: String): Future<MessageSentResult> {
-        d("Communicator", "postmessage [+]  <$json> to destination <$onc_addr>")
+        Logging.d(TAG, "postmessage [+]  <$json> to destination <$onc_addr>")
         return clientExecutor.submit(Callable {
             try {
                 val url = "http://$onc_addr/postmessage"
-                d(TAG, "postmessage [+] perform <$url>")
-                val conn = NetCipher.getHttpURLConnection(url)
-                conn.setRequestProperty("User-Agent", "")
-                conn.readTimeout = 10000
-                conn.connectTimeout = 15000
-                conn.requestMethod = "POST"
-                //conn.setDoInput(true);
-                //conn.setDoOutput(true);
-                d(TAG, "postmessage [+] Write data")
-                val writer = BufferedWriter(OutputStreamWriter(conn.outputStream))
-                writer.write(
-                    json.trimIndent()
-                )
-                writer.close()
-                d(TAG, "postmessage [+] Read data")
-                val reader = BufferedReader(InputStreamReader(conn.inputStream))
-                var line: String? = "" // reads a line of text
-                val out = StringBuilder()
-                while (reader.readLine().also { line = it } != null) {
-                    out.append(line)
+                Logging.d(TAG, "postmessage [+] perform <$url>")
+                post(json, url).let {
+                    Logging.d(TAG, "postmessage [+] received $it")
                 }
-                reader.close()
-                d(TAG, "postmessage [+] Message send done")
-                conn.disconnect()
                 MessageSentResult.SENT
             } catch (e: Exception) {
-                e(TAG, "postmessage [-] Error while send message", e)
+                Logging.e(TAG, "postmessage [-] Error while send message", e)
                 MessageSentResult.FAILURE
             }
-            MessageSentResult.FAILURE
         })
+    }
+
+    fun ping(myID: String, onc_addr: String): Future<Boolean> {
+        Logging.d(TAG, "ping [+] <$myID> to destination <$onc_addr>")
+        return clientExecutor.submit(Callable<Boolean> {
+            try {
+                val url = "http://$onc_addr/ping"
+                Logging.d(TAG, "postmessage [+] perform <$url>")
+                post(myID, url).let {
+                    Logging.d(TAG, "postmessage [+] received $it")
+                }
+                true
+            } catch (e: IllegalStateException) {
+                Logging.e(TAG, "Error while send message", e);
+                true;
+            } catch (e: FileNotFoundException) {
+                Logging.e(TAG, "Error while send message", e);
+                true;
+            } catch (e: Exception) {
+                Logging.e(TAG, "postmessage [-] Error while send message", e)
+                false
+            }
+        })
+    }
+
+    fun openConnection(urlString: String): HttpURLConnection? {
+        val connection = NetCipher.getHttpURLConnection(urlString)
+        connection.setRequestProperty("User-Agent", "Mozilla/5.0 ( compatible ) ");
+        connection.setRequestProperty("Accept", "*/*");
+        return connection
+    }
+
+    fun openStream(onionUrl: String) : HttpURLConnection {
+        val conn = NetCipher.getHttpURLConnection(onionUrl)
+        conn.setRequestProperty("User-Agent", "")
+        conn.setRequestProperty("Connection", "Keep-Alive");
+        conn.setRequestProperty("Content-Type", "application/octet-stream");
+        conn.readTimeout = 10000
+        conn.connectTimeout = 60 * 60 * 1000 // 1h stream ;)
+        conn.requestMethod = "POST"
+        conn.setDoInput(true);
+        conn.setDoOutput(true);
+        return conn
     }
 
     enum class MessageSentResult {

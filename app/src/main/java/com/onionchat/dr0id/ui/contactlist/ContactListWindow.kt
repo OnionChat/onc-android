@@ -21,8 +21,7 @@ import com.onionchat.dr0id.OnionChatActivity
 import com.onionchat.dr0id.R
 import com.onionchat.dr0id.connectivity.ConnectionManager
 import com.onionchat.dr0id.messaging.messages.IBroadcastMessage
-import com.onionchat.dr0id.messaging.messages.Message
-import com.onionchat.dr0id.qr.QrGenerator
+import com.onionchat.dr0id.adduser.QrViewer
 import com.onionchat.dr0id.ui.broadcast.CreateBroadCastActivity
 import com.onionchat.dr0id.ui.broadcast.CreateBroadCastActivity.Companion.EXTRA_BROADCAST_ID
 import com.onionchat.dr0id.ui.chat.ChatWindow
@@ -31,8 +30,10 @@ import com.onionchat.dr0id.ui.contactdetails.ContactDetailsActivity
 import com.onionchat.dr0id.ui.contactdetails.ContactDetailsActivity.Companion.EXTRA_CONTACT_ID
 import com.onionchat.dr0id.ui.info.InfoActivtiy
 import com.onionchat.dr0id.ui.settings.SettingsActivity
-import com.onionchat.dr0id.users.BroadcastManager
-import com.onionchat.dr0id.users.UserManager
+import com.onionchat.dr0id.database.BroadcastManager
+import com.onionchat.dr0id.database.UserManager
+import com.onionchat.dr0id.messaging.IMessage
+import com.onionchat.dr0id.messaging.SymmetricMessage
 import com.onionchat.localstorage.userstore.Broadcast
 import com.onionchat.localstorage.userstore.Conversation
 
@@ -91,7 +92,7 @@ class ContactListWindow : OnionChatActivity(), ContactListAdapter.ItemClickListe
         }
 
         generateFab.setOnClickListener {
-            val intent = Intent(this@ContactListWindow, QrGenerator::class.java)
+            val intent = Intent(this@ContactListWindow, QrViewer::class.java)
             intent.putExtra("data", QrPayload.encode(QrPayload(UserManager.myId!!, Crypto.getMyPublicKey()!!.encoded)))
             startActivity(intent)
         }
@@ -103,7 +104,7 @@ class ContactListWindow : OnionChatActivity(), ContactListAdapter.ItemClickListe
         }
         broadCastFab.setOnClickListener {
             val intent = Intent(this@ContactListWindow, CreateBroadCastActivity::class.java)
-            startActivity(intent)
+            resultLauncher.launch(intent)
         }
 
 
@@ -149,7 +150,7 @@ class ContactListWindow : OnionChatActivity(), ContactListAdapter.ItemClickListe
         } else {
             runOnUiThread {
                 UserManager.myId?.let {
-                    setTitle(IDGenerator.toVisibleId(it))
+                    setTitle(IDGenerator.toHashedId(it))
                     //updateConnectionState(ConnectionStatus.CONNECTED)
                     pingAllConversations()
                 } ?: kotlin.run {
@@ -176,6 +177,9 @@ class ContactListWindow : OnionChatActivity(), ContactListAdapter.ItemClickListe
                 openBroadcastDetails(it.id, resultLauncher)
             }
         }
+    }
+
+    override fun onCheckedChangeListener(position: Int) {
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -224,22 +228,31 @@ class ContactListWindow : OnionChatActivity(), ContactListAdapter.ItemClickListe
         return true
     }
 
-    override fun onReceiveMessage(message: Message): Boolean {
+    override fun onReceiveMessage(message: IMessage): Boolean {
+        var index = -1
         //message.from
-        conversations.forEachIndexed { i, it ->
-            if (message is IBroadcastMessage) {
-                if (it.getId().equals(message.getBroadcastId())) {
-                    it.unreadMessages++
-                    runOnUiThread {
-                        adapter?.notifyItemChanged(i)
+        if(message is SymmetricMessage) {
+
+            conversations.forEachIndexed { i, it ->
+                if (message is IBroadcastMessage) {
+                    if (it.getId().equals(message.getBroadcast().id)) { // todo fix broadcast
+                        it.unreadMessages++
+                        index = i
+                    }
+                } else {
+                    if (it.getLabel().equals(message.hashedFrom)) { // todo change from label to hashedId
+                        it.unreadMessages++
+                        index = i
                     }
                 }
-            } else {
-                if (it.getLabel().equals(message.from)) {
-                    it.unreadMessages++
-                    runOnUiThread {
-                        adapter?.notifyItemChanged(i)
-                    }
+            }
+            if(index > 0) {
+
+                runOnUiThread {
+                    val item = conversations[index]
+                    conversations.remove(item)
+                    conversations.add(0, item)
+                    adapter?.notifyDataSetChanged()
                 }
             }
         }

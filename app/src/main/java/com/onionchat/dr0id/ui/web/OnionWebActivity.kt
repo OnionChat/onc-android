@@ -64,13 +64,14 @@ class OnionWebActivity : AppCompatActivity() {
             findViewById<WebView>(R.id.activity_onion_web_webview)?.let {
 
 
-                val webViewClient = OnionWebClient()
+                val webViewClient = OnionWebClient(this@OnionWebActivity)
                 //webViewClient.setRequestCounterListener { requestCount -> runOnUiThread { statusTextView.text = "Request Count: $requestCount" } }
                 it.webViewClient = webViewClient
                 it.webChromeClient = WebChromeClient()
                 it.getSettings().setDomStorageEnabled(true);
                 it.settings.javaScriptEnabled = true
-
+                it.getSettings().setAllowContentAccess(true);
+                it.getSettings().setDomStorageEnabled(true);
                 Logging.d(TAG, "Going to open url <" + url + ">")
                 it.loadUrl(url)
             }

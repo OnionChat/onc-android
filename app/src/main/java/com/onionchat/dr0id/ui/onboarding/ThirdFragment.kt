@@ -6,6 +6,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import androidx.navigation.fragment.findNavController
 import com.onionchat.common.SettingsManager
 import com.onionchat.dr0id.MainActivity
 import com.onionchat.dr0id.R
@@ -40,8 +41,8 @@ class ThirdFragment : Fragment() {
 //        }
         binding.buttonThird.setOnClickListener {
             context?.let {
-                SettingsManager.setBooleanSetting(getString(R.string.key_onboarding), false, it)
-                startActivity(Intent(it, MainActivity::class.java))
+                findNavController().navigate(R.id.action_ThirdFragment_to_UserLabelFragment)
+
             }
         }
     }

@@ -13,10 +13,6 @@ interface BroadcastDao {
     @Query("SELECT * FROM broadcast WHERE id IN (:broadcastIds)")
     fun loadAllByIds(broadcastIds: Array<String>): List<Broadcast>
 
-//    @Query("SELECT * FROM user WHERE first_name LIKE :first AND " +
-//            "last_name LIKE :last LIMIT 1")
-//    fun findByName(first: String, last: String): User
-
     @Insert
     fun insertAll(vararg broadcasts: Broadcast)
 

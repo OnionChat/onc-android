@@ -1,4 +1,9 @@
 package com.onionchat.dr0id.ui.broadcast
 
-interface IGetContacts {
+import com.onionchat.localstorage.userstore.User
+
+interface IBroadcastCreateListener {
+    fun onLabelChoosen(label: String)
+    fun onUsersSelected(users: List<User>)
+    fun onCreateBroadcast()
 }

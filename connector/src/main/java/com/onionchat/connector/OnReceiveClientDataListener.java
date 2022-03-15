@@ -1,7 +1,7 @@
 package com.onionchat.connector;
 
-import com.onionchat.connector.http.HttpServer;
+import com.onionchat.connector.http.OnionServer;
 
 public interface OnReceiveClientDataListener {
-    void onReceive(HttpServer.ReceiveDataType type, String data);
+    void onReceive(OnionServer.ReceiveDataType type, String data);
 }

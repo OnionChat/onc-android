@@ -5,11 +5,11 @@ import com.onionchat.common.IDGenerator
 import com.onionchat.common.Logging
 import com.onionchat.common.SettingsManager
 import com.onionchat.connector.BackendConnector
-import com.onionchat.connector.Communicator
 import com.onionchat.connector.IConnectorCallback
 import com.onionchat.connector.http.HttpServerSettings
+import com.onionchat.connector.http.OnionClient
 import com.onionchat.dr0id.R
-import com.onionchat.dr0id.users.UserManager
+import com.onionchat.dr0id.database.UserManager
 import com.onionchat.localstorage.userstore.User
 import java.util.concurrent.Executors
 
@@ -25,6 +25,7 @@ object ConnectionManager {
                 Logging.d("ConnectionManager", "checkConnection - call onConnected callback")
                 connectorCallback.onConnected(true)
             } else {
+                Logging.d("ConnectionManager", "checkConnection create connection")
                 BackendConnector.getConnector().connect(context, object : IConnectorCallback {
                     override fun onConnected(success: Boolean) {
                         //val c = Communicator()
@@ -39,9 +40,10 @@ object ConnectionManager {
     }
 
     fun isUserOnline(user : User, callback : (Boolean) -> Unit)  {
-        UserManager.myId?.let {
+        UserManager.myId?.let { // todo move to task !
             Thread {
-                callback(Communicator.isUserOnline(user.id, IDGenerator.toVisibleId(it)).get())
+                //callback(Communicator.isUserOnline(user.id, IDGenerator.toHashedId(it)).get())
+                callback(OnionClient.ping(IDGenerator.toHashedId(it), user.id).get()) // todo user onionfuture instead!
             }.start()
         }
     }

@@ -1,14 +1,11 @@
-package com.onionchat.dr0id.qr
+package com.onionchat.dr0id.adduser
 
-import android.Manifest
 import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import com.onionchat.dr0id.R
 
-import android.util.Log
 import android.widget.Button
-import android.widget.ImageButton
 import android.widget.TextView
 import com.google.zxing.integration.android.IntentIntegrator
 import com.onionchat.common.Logging

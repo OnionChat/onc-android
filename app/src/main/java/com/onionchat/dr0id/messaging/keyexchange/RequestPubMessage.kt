@@ -1,22 +1,24 @@
-package com.onionchat.dr0id.keyexchange
+package com.onionchat.dr0id.messaging.keyexchange
 
 import com.onionchat.common.MessageTypes
+import com.onionchat.dr0id.messaging.IMessage
 import com.onionchat.localstorage.messagestore.EncryptedMessage
 import java.util.*
 
 class RequestPubMessage(
-    val hashedFrom: String,
-    val hashedTo: String,
-    val messageId: String = UUID.randomUUID().toString(),
-    val signature: String,
-    val created: Long = System.currentTimeMillis(),
-    val status: Int,
-    val pub: ByteArray
-) {
+    hashedFrom: String,
+    hashedTo: String,
+    messageId: String = UUID.randomUUID().toString(),
+    signature: String,
+    created: Long = System.currentTimeMillis(),
+    status: Int,
+    val pub: ByteArray, // todo add my real uid
+    type: Int = MessageTypes.REQUEST_PUB_MESSAGE.ordinal
+) : IMessage(messageId, hashedFrom, hashedTo, signature, status, created, 0, type, "") {
 
 
     fun toEncryptedMessage(): EncryptedMessage {
-        return EncryptedMessage(messageId, pub, hashedFrom, hashedTo, signature, 0, created, 0, MessageTypes.REQUEST_PUB_MESSAGE.ordinal)
+        return EncryptedMessage(messageId, pub, hashedFrom, hashedTo, signature, 0, created, 0, type)
     }
 
     companion object {
@@ -31,5 +33,9 @@ class RequestPubMessage(
                 encryptedMessage.encryptedMessageBytes
             )
         }
+    }
+
+    override fun getMessageType(): Int {
+        return type
     }
 }

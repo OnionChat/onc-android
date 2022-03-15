@@ -6,12 +6,20 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.util.Base64
 import androidx.room.Ignore
+import com.onionchat.common.Logging
+import java.nio.charset.Charset
 
-class Conversation(val user: User?, var unreadMessages: Int = 0, var isOnline: Boolean = false, val broadcast: Broadcast? = null) {
+class Conversation(
+    val user: User?,
+    var unreadMessages: Int = 0,
+    var isOnline: Boolean = false,
+    val broadcast: Broadcast? = null,
+    var selected: Boolean = false
+) {
 
     fun getLabel(): String {
         user?.let {
-            return it.getName()
+            return it.getHashedId()
         }
         broadcast?.let {
             return it.label
@@ -35,7 +43,7 @@ class Conversation(val user: User?, var unreadMessages: Int = 0, var isOnline: B
 
     fun getAvatar(): Bitmap? {
         val str = if (user != null) {
-            user.getName()
+            user.getHashedId()
         } else if (broadcast != null) {
             broadcast.id
         } else {
@@ -52,6 +60,7 @@ class Conversation(val user: User?, var unreadMessages: Int = 0, var isOnline: B
 
         fun getRepresentativeProfileBitmap(visibleId: String): Bitmap? {
             val data = Base64.decode(visibleId, Base64.DEFAULT)
+            Logging.d("Conversation", "Test: " + String(data, Charset.forName("UTF-16"))[0])
 
             val width = 500
             val height = 500

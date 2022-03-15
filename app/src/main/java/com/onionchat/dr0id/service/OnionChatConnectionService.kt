@@ -10,39 +10,49 @@ import android.graphics.Color
 import android.os.*
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
 import com.onionchat.common.Logging
 import com.onionchat.common.SettingsManager
 import com.onionchat.connector.BackendConnector
-import com.onionchat.connector.Communicator
 import com.onionchat.connector.IConnectorCallback
-import com.onionchat.connector.http.HttpServer
+import com.onionchat.connector.http.OnionServer
 import com.onionchat.dr0id.MainActivity
 import com.onionchat.dr0id.R
 import com.onionchat.dr0id.connectivity.ConnectionManager
-import com.onionchat.dr0id.messaging.MessagePacker
+import com.onionchat.dr0id.database.BroadcastManager
+import com.onionchat.dr0id.database.UserManager
+import com.onionchat.dr0id.messaging.IMessage
+import com.onionchat.dr0id.messaging.SymmetricMessage
 import com.onionchat.dr0id.messaging.messages.BroadcastTextMessage
-import com.onionchat.dr0id.users.BroadcastManager
-import com.onionchat.dr0id.users.UserManager
+import com.onionchat.dr0id.messaging.messages.IBroadcastMessage
+import com.onionchat.dr0id.messaging.messages.ITextMessage
+import com.onionchat.dr0id.queue.OnionFuture
+import com.onionchat.dr0id.queue.OnionTask
+import com.onionchat.dr0id.queue.OnionTaskProcessor
+import com.onionchat.dr0id.queue.tasks.ProcessPendingTask
+import com.onionchat.dr0id.queue.tasks.ReceiveMessageTask
+import com.onionchat.dr0id.queue.tasks.SendMessageTask
 import com.onionchat.localstorage.userstore.Broadcast
+import com.onionchat.localstorage.userstore.User
 import java.lang.System.exit
 import java.util.*
 import kotlin.collections.ArrayList
 
 
-class OnionChatConnectionService : Service() {
+class OnionChatConnectionService : Service(), OnionTaskProcessor.OnionTaskProcessorObserver {
+
+    val TAG = "OnionChatConnectionService"
 
     val ACTION_KILL_SERVICE = "kill_onionchat_service"
 
     val NOTIFICATION_CHANNEL_MESSAGES = "notification_messages"
 
     interface ServiceClient {
-        fun onReceiveMessage(message: com.onionchat.dr0id.messaging.messages.Message): Boolean
+        fun onReceiveMessage(message: IMessage): Boolean
         fun onPingReceived(user: String)
         fun onBroadcastAdded(broadcast: Broadcast)
     }
 
-    val cachedMessages = Collections.synchronizedList(ArrayList<com.onionchat.dr0id.messaging.messages.Message>())
+    val cachedMessages = Collections.synchronizedList(ArrayList<IMessage>())
     var serviceClients = Collections.synchronizedSet(HashSet<ServiceClient>())
 
 
@@ -72,7 +82,9 @@ class OnionChatConnectionService : Service() {
     override fun onCreate() {
         startForeground(101, buildForegroundNotification())
 
-        Logging.d("OnionChatConnectionService", "Applying wakelock")
+        OnionTaskProcessor.addObserver(this)
+
+        Logging.d(TAG, "Applying wakelock")
         val wakeLock: PowerManager.WakeLock =
             (getSystemService(Context.POWER_SERVICE) as PowerManager).run { // todo make optional
                 newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "OnionChat::keepListeningForMessages").apply {
@@ -82,7 +94,8 @@ class OnionChatConnectionService : Service() {
 
         BackendConnector.registerOnReceiveCallback { type, data ->
             when (type) {
-                HttpServer.ReceiveDataType.PING -> {
+                OnionServer.ReceiveDataType.PING -> {
+                    OnionTaskProcessor.enqueue(ProcessPendingTask())
                     if (serviceClients.isEmpty()) {
                         if (SettingsManager.getBooleanSetting(getString(R.string.key_ping_notifications), this)) {
                             showNotification("You were pinged", "You have been pinged by a user. May you wanna chat?", "ping_channel")
@@ -93,18 +106,39 @@ class OnionChatConnectionService : Service() {
                         }
                     }
                 }
-                HttpServer.ReceiveDataType.POSTMESSAGE -> {
-                    onReceiveMessage(MessagePacker.decodeMessage(data))
+                OnionServer.ReceiveDataType.RESPONSEPUB -> {
+
+                }
+                OnionServer.ReceiveDataType.REQUESTPUB -> {
+
+                }
+                OnionServer.ReceiveDataType.SYMKEY -> {
+
+                }
+                OnionServer.ReceiveDataType.POSTMESSAGE -> {
+                    OnionTaskProcessor.enqueue(ReceiveMessageTask(data)).then { result ->
+                        if (result.status == OnionTask.Status.SUCCESS) {
+                            result.message?.let {
+                                onReceiveMessage(it)
+                            } ?: run {
+                                Logging.e(TAG, "oncreate [-] ReceiveMessageTask returned invalid result $result")
+                            }
+                        } else {
+                            // todo how to handle this?
+                        }
+                    }
+                }
+                else -> {
+                    Logging.e(TAG, "Unsupported message type <$type>")
                 }
             }
         }
 
-        ConnectionManager.checkConnection(this@OnionChatConnectionService, object : IConnectorCallback {
-            override fun onConnected(success: Boolean) {
-                Logging.d("OnionChatConnectionService", "service is connected")
-                UserManager.myId = BackendConnector.getConnector().getHostName(this@OnionChatConnectionService)
-            }
-        })
+        ConnectionManager.checkConnection(this@OnionChatConnectionService) {
+            Logging.d("OnionChatConnectionService", "service is connected")
+            UserManager.myId = BackendConnector.getConnector().getHostName(this@OnionChatConnectionService)
+            OnionTaskProcessor.enqueue(ProcessPendingTask()) // todo make more nice !
+        }
         val br: BroadcastReceiver = MyBroadCastReceiver()
         val filter = IntentFilter(ACTION_KILL_SERVICE)
         registerReceiver(br, filter);
@@ -234,49 +268,58 @@ class OnionChatConnectionService : Service() {
 
     val forwardedSignatures = HashSet<String>()
 
-    fun forwardBroadcastMessage(message: BroadcastTextMessage) {
-        if (forwardedSignatures.contains(message.signature)) {
-            return
-        }
-        Thread {
-            // do that asynchronous
-            UserManager.getAllUsers().get()?.forEach { // todo send this only to users added to the broadcast
-                if(it.getName() != message.from) {
-                    val encoded_message = MessagePacker.encodeMessage(message, it.certId)
-                    if(!forwardedSignatures.contains(message.signature)) {
-                        Communicator.sendMessage(it.id, encoded_message) { status ->
-                            if (status == Communicator.MessageSentStatus.SENT) {
-                                Logging.d("OnionChatConnectionService", "Successfully forwarded message to user <" + it.getName() + ">")
-                            }
-                        }
-                        forwardedSignatures.add(message.signature)
-                    }
-                }
-            }
-        }.start()
-        forwardedSignatures.add(message.signature)
-    }
+//    fun forwardBroadcastMessage(broadcast: Broadcast?, message: BroadcastTextMessage) {
+//        if (forwardedSignatures.contains(message.signature)) {
+//            return
+//        } //
+//        broadcast?.let {
+//            Thread {
+//                // do that asynchronous
+//                BroadcastManager.getBroadcastUsers(it).get()?.forEach { // todo send this only to users added to the broadcast
+//                    if (it.getName() != message.from) {
+//                        val encoded_message = MessageProcessor.encodeMessage(message, it.certId)
+//                        if (!forwardedSignatures.contains(message.signature)) {
+//                            Communicator.sendMessage(it.id, encoded_message) { status ->
+//                                if (status == Communicator.MessageSentStatus.SENT) {
+//                                    Logging.d("OnionChatConnectionService", "Successfully forwarded message to user <" + it.getName() + ">")
+//                                }
+//                            }
+//                            forwardedSignatures.add(message.signature)
+//                        }
+//                    }
+//                }
+//            }.start()
+//        }
+//        forwardedSignatures.add(message.signature)
+//    }
 
-    fun onReceiveMessage(message: com.onionchat.dr0id.messaging.messages.Message): Boolean {
+    fun onReceiveMessage(message: IMessage): Boolean {
         Logging.d("OnionChatConnectionService", "onReceiveMessage [+] message <" + message + ">")
         // broadcast check for broadcasts to be added
-        if (message is BroadcastTextMessage) {
-            var broadcast = BroadcastManager.getBroadcastById(message.broadcastId).get()
+        if (message is BroadcastTextMessage) { // todo will this still work ?
+            var broadcast = BroadcastManager.getBroadcastById(message.getBroadcast().id).get()
             if (broadcast == null) {
                 val allowed = SettingsManager.getBooleanSetting(getString(R.string.key_allow_broadcast_adding), this)
-                if(allowed) {
-                    val broadcast = Broadcast(message.broadcastId, message.broadcastLabel)
+                if (allowed) {
+                    broadcast = Broadcast(message.getBroadcast().id, message.getBroadcast().label)
                     BroadcastManager.addBroadcast(broadcast)
+                    val default_add_all_users = SettingsManager.getBooleanSetting(getString(R.string.key_default_add_all_users), this)
+                    if (default_add_all_users) {
+                        BroadcastManager.addUsersToBroadcast(broadcast, UserManager.getAllUsers().get())
+                    }
                     onBroadcastAdded(broadcast)
                 }
                 Logging.d("OnionChatConnectionService", "onReceiveMessage [+] broadcast auto add disabled")
             }
-            val doForward = SettingsManager.getBooleanSetting(getString(R.string.key_enable_message_forwarding), this)
-            if(doForward) {
-                forwardBroadcastMessage(message) // TODO make optional
-            } else {
-                Logging.d("OnionChatConnectionService", "onReceiveMessage [+] message forwarding disabled")
-            }
+//            if (doForward) {
+//                message.getEncryptedMessage()?.let {
+//                    OnionTaskProcessor.enqueue(ForwardMessageTask(it))
+//                } ?: kotlin.run {
+//                    Logging.e(TAG, "onReceiveMeessage [-] unable to forward broadcast message")
+//                }
+//            } else {
+//                Logging.d("OnionChatConnectionService", "onReceiveMessage [+] message forwarding disabled")
+//            }
         }
 
 
@@ -290,7 +333,18 @@ class OnionChatConnectionService : Service() {
         }
         if (!consumed) {
             if (SettingsManager.getBooleanSetting(getString(R.string.key_notifications), this)) {
-                showNotification("New Messages", "You have received new messages. Click to show them up", NOTIFICATION_CHANNEL_MESSAGES)
+                var tag = "New Messages"
+                var text = "You have received new messages. Click to show them up"
+                if (message is SymmetricMessage) {
+                    tag = message.hashedFrom
+                }
+                if (message is IBroadcastMessage) {
+                    tag += "@${message.getBroadcast().label}"
+                }
+                if (message is ITextMessage) {
+                    text = message.getText().text
+                }
+                showNotification(tag, text, NOTIFICATION_CHANNEL_MESSAGES)
             }
             cachedMessages.add(message)
         }
@@ -301,4 +355,20 @@ class OnionChatConnectionService : Service() {
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.deleteNotificationChannel(NOTIFICATION_CHANNEL_MESSAGES);
     }
+
+    fun sendMessage(
+        message: IMessage,
+        fromUID: String,
+        to: User
+    ): OnionFuture<SendMessageTask.SendMessageResult> {
+        return OnionTaskProcessor.enqueue(SendMessageTask(message, fromUID, to))
+    }
+
+    override fun onTaskEnqueued(task: Any) {
+    }
+
+    override fun onTaskFinished(task: Any, result: OnionTask.Result) {
+    }
+
+
 }

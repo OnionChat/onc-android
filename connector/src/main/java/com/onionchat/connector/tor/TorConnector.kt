@@ -1,30 +1,29 @@
 package com.onionchat.connector.tor
 
 import android.content.*
-import android.os.*
-import com.onionchat.common.Logging.d
-import com.onionchat.common.Logging.e
-import com.onionchat.connector.http.HttpServer.Companion.startService
-import com.onionchat.connector.WebHelper.getWebDir
-import com.onionchat.connector.OnReceiveClientDataListener
-import com.onionchat.connector.IConnector
-import org.torproject.jni.TorService
-import com.onionchat.connector.IConnectorCallback
-import com.onionchat.connector.tor.TorConnector
-import com.onionchat.connector.ServerTools
-import info.guardianproject.netcipher.NetCipher
-import net.freehaven.tor.control.TorControlCommands
+import android.os.Build
+import android.os.Handler
+import android.os.HandlerThread
+import android.os.IBinder
 import android.system.ErrnoException
 import android.system.Os
 import android.util.JsonReader
+import com.onionchat.common.Logging.d
+import com.onionchat.common.Logging.e
+import com.onionchat.connector.IConnector
+import com.onionchat.connector.IConnectorCallback
+import com.onionchat.connector.OnReceiveClientDataListener
+import com.onionchat.connector.ServerTools
+import com.onionchat.connector.WebHelper.getWebDir
 import com.onionchat.connector.http.HttpServerSettings
-import com.onionchat.connector.http.HttpServer.HttpServerCallback
-import com.onionchat.connector.WebHelper
-import com.onionchat.connector.http.HttpServer.ReceiveDataType
+import com.onionchat.connector.http.OnionServer.Companion.startService
+import com.onionchat.connector.http.OnionServer.HttpServerCallback
+import com.onionchat.connector.http.OnionServer.ReceiveDataType
+import info.guardianproject.netcipher.NetCipher
+import net.freehaven.tor.control.TorControlCommands
 import org.apache.commons.io.FileUtils
+import org.torproject.jni.TorService
 import java.io.*
-import java.lang.Exception
-import java.lang.IllegalStateException
 import java.net.URLConnection
 
 class TorConnector(private val mOnReceiveClientDataListener: OnReceiveClientDataListener) : IConnector {
@@ -163,7 +162,7 @@ class TorConnector(private val mOnReceiveClientDataListener: OnReceiveClientData
         } catch (e: IOException) {
             e("TorConnector", "Apply new circuit failed", e)
         }
-        return ""
+        return "Apply new circuit failed"
     }
 
     override fun getInfo(): String { // improve to fetch circiut
@@ -235,6 +234,12 @@ SIGNAL_ACTIVE
                 webfolder.mkdirs()
                 d("TorConnector", "Use WebFolder <$webfolder>")
                 return webfolder.absolutePath
+            }
+
+            override fun onStreamRequested(inputStream: InputStream): Boolean {
+                return streamListener?.onStreamRequested(inputStream)?.let {
+                    it
+                } ?: run { false }
             }
 
             override fun onDownloadApk(): String {
@@ -309,6 +314,10 @@ SIGNAL_ACTIVE
 
     companion object {
         const val TAG = "TorConnector"
+
+        var streamListener: OnStreamRequestedListener? = null
+
+
         @Throws(IOException::class)
         private fun checkIsTor(connection: URLConnection): Boolean {
             var isTor = false
@@ -326,4 +335,8 @@ SIGNAL_ACTIVE
             return isTor
         }
     }
+}
+
+interface OnStreamRequestedListener {
+    fun onStreamRequested(inputStream: InputStream): Boolean
 }

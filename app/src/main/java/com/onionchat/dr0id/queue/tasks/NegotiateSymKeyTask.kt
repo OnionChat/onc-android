@@ -5,17 +5,17 @@ import com.onionchat.common.IDGenerator
 import com.onionchat.common.Logging
 import com.onionchat.dr0id.database.KeyManager
 import com.onionchat.dr0id.database.UserManager
-import com.onionchat.dr0id.messaging.keyexchange.ResponseSymMessage
-import com.onionchat.dr0id.messaging.keyexchange.ResponseSymMessageData
+import com.onionchat.dr0id.messaging.keyexchange.NegotiateSymKeyMessage
+import com.onionchat.dr0id.messaging.keyexchange.NegotiateSymKeyMessageData
 import com.onionchat.dr0id.queue.OnionTask
 import com.onionchat.localstorage.userstore.SymAlias
 import com.onionchat.localstorage.userstore.User
 import java.util.*
 
-class RequestNegotiateSymKeyTask(val user: User) : OnionTask<RequestNegotiateSymKeyTask.NegotiateSymKeyResult>() {
+class NegotiateSymKeyTask(val user: User) : OnionTask<NegotiateSymKeyTask.NegotiateSymKeyResult>() {
 
 
-    class NegotiateSymKeyResult(status: Status, exception: Exception? = null) : OnionTask.Result(status, exception) {
+    class NegotiateSymKeyResult(val newAlias: SymAlias? = null, status: Status, exception: Exception? = null) : OnionTask.Result(status, exception) {
     }
 
     override fun run(): NegotiateSymKeyResult {
@@ -34,24 +34,28 @@ class RequestNegotiateSymKeyTask(val user: User) : OnionTask<RequestNegotiateSym
 
         // create message
         val responseSymMessage =
-            ResponseSymMessage(IDGenerator.toHashedId(UserManager.myId!!), IDGenerator.toHashedId(user.id), data = ResponseSymMessageData(symAlias, key))
+            NegotiateSymKeyMessage(
+                IDGenerator.toHashedId(UserManager.myId!!),
+                IDGenerator.toHashedId(user.id),
+                keyData = NegotiateSymKeyMessageData(symAlias, key)
+            )
 
         // enque dependency
         val sendMessageResult = enqueueSubtask(SendMessageTask(responseSymMessage, UserManager.myId!!, user)).get()
         return when {
             sendMessageResult.status == Status.SUCCESS -> {
-                NegotiateSymKeyResult(Status.SUCCESS)
+                NegotiateSymKeyResult(symAlias, Status.SUCCESS)
             }
             sendMessageResult.exception == null -> { // just a connection issue
-                NegotiateSymKeyResult(Status.PENDING)
+                NegotiateSymKeyResult(status = Status.PENDING)
             }
             else -> {
-                NegotiateSymKeyResult(Status.FAILURE, sendMessageResult.exception)
+                NegotiateSymKeyResult(status = Status.FAILURE, exception = sendMessageResult.exception)
             }
         }
     }
 
     override fun onUnhandledException(exception: java.lang.Exception): NegotiateSymKeyResult {
-        return NegotiateSymKeyResult(Status.FAILURE, exception)
+        return NegotiateSymKeyResult(status = Status.FAILURE, exception = exception)
     }
 }

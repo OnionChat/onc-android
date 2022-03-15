@@ -1,4 +1,4 @@
-package com.onionchat.dr0id.users
+package com.onionchat.dr0id.database
 
 import android.content.Context
 import androidx.room.Room
@@ -22,7 +22,35 @@ object DatabaseManager {
             )
         }
     }
+    val MIGRATION_2_3: Migration = object : Migration(2, 3) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+            database.execSQL(
+                "Create table broadcastmember (id TEXT PRIMARY KEY NOT NULL, broadcast_id TEXT NOT NULL, user_id TEXT NOT NULL)"
+            )
+            database.execSQL(
+                "Create table blockedconversation (id TEXT PRIMARY KEY NOT NULL, conversation_id TEXT NOT NULL)"
+            )
+        }
+    }
 
+    val MIGRATION_3_4: Migration = object : Migration(3, 4) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+            database.execSQL(
+                "Create table encryptedmessage (message_id TEXT PRIMARY KEY NOT NULL,message_data BLOB NOT NULL, hashed_from TEXT NOT NULL, hashed_to TEXT NOT NULL, signature TEXT NOT NULL, status INTEGER NOT NULL, read INTEGER NOT NULL, type INTEGER NOT NULL, created INTEGER NOT NULL, extra TEXT NOT NULL)"
+            )
+        }
+    }
+    val MIGRATION_4_5: Migration = object : Migration(4, 5) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+
+            database.execSQL(
+                "Create table symalias (id TEXT PRIMARY KEY NOT NULL,userid TEXT NOT NULL, alias TEXT NOT NULL, timestamp INTEGER NOT NULL, FOREIGN KEY(userid) REFERENCES User(id) ON UPDATE NO ACTION ON DELETE CASCADE)"
+            )
+            database.execSQL(
+                "CREATE INDEX index_SymAlias_userid ON Symalias(userid)"
+            )
+        }
+    }
     fun initDatabase(context: Context) {
         executorService.submit {
             Logging.d("UserManager", "initDatabase - call builder")
@@ -30,6 +58,9 @@ object DatabaseManager {
                 context.applicationContext,
                 UsersDatabase::class.java, "contacts"
             ).addMigrations(MIGRATION_1_2)
+             .addMigrations(MIGRATION_2_3)
+             .addMigrations(MIGRATION_3_4)
+             .addMigrations(MIGRATION_4_5)
                 .build()
             Logging.d("UserManager", "initDatabase - check dummies")
             /*if (getAllUsers().get().isEmpty()) {

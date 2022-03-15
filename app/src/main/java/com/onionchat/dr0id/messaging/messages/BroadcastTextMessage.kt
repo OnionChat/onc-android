@@ -1,42 +1,85 @@
 package com.onionchat.dr0id.messaging.messages
 
+import com.onionchat.common.Logging
+import com.onionchat.common.MessageTypes
+import com.onionchat.dr0id.messaging.MessageParseException
+import com.onionchat.dr0id.messaging.SymmetricMessage
+import com.onionchat.localstorage.userstore.Broadcast
 import org.json.JSONObject
 
-class BroadcastTextMessage(internal val broadcastId: String, val broadcastLabel: String, val message: String, fromUser: String, signature: String = "") :
-    TextMessage(toMessageString(broadcastId, broadcastLabel, message), fromUser, signature), IBroadcastMessage {
 
-    override fun getText(): String {
-        return message
+ // TODO check if from + label matches the broadcast id !!
+class BroadcastTextMessage(
+    private val broadcast: Broadcast,
+    messageId: String = java.util.UUID.randomUUID().toString(),
+    private val textData: TextMessageData,
+    hashedFrom: String,
+    hashedTo: String,
+    signature: String = "",
+    messageStatus: Int = 0,
+    created: Long = System.currentTimeMillis(),
+    read: Int = 0
+) :
+    SymmetricMessage(
+        messageId,
+        createPayload(textData, broadcast),
+        hashedFrom,
+        hashedTo,
+        signature,
+        messageStatus,
+        created,
+        read,
+        MessageTypes.BROADCAST_TEXT_MESSAGE.ordinal
+    ), IBroadcastMessage, ITextMessage {
+
+
+    constructor(symmetricMessage: SymmetricMessage) : this(
+        extractPayload(symmetricMessage.data),
+        symmetricMessage.messageId,
+        TextMessage.extractPayload(symmetricMessage.data),
+        symmetricMessage.hashedFrom,
+        symmetricMessage.hashedTo,
+        symmetricMessage.signature,
+        symmetricMessage.messageStatus,
+        symmetricMessage.created,
+        symmetricMessage.read
+    )
+
+    override fun getText(): TextMessageData {
+        return textData
     }
+
 
     companion object {
-        val BROADCAST_ID = "broadcast_id"
-        val BROADCAST_LABEL = "broadcast_label"
-        val MESSAGE = "broadcast_message"
 
-        fun createFromMessageString(msg: String, fromUser: String, signature: String = ""): BroadcastTextMessage? {
-            val root = JSONObject(msg)
-            val broadcastId = root.getString(BROADCAST_ID)!!
-            val broadcastLabel = root.getString(BROADCAST_LABEL)!!
-            val text = root.getString(MESSAGE)!!
-            if (broadcastId.length == 0 || broadcastLabel.length == 0) {
-                return null
-            } else {
-                return BroadcastTextMessage(broadcastId, broadcastLabel, text, fromUser, signature)
-            }
+
+        @JvmStatic
+        val BROADCAST_ID = "broadcast_id"
+
+        @JvmStatic
+        val BROADCAST_LABEL = "broadcast_label"
+
+        fun createPayload(text: TextMessageData, broadcast: Broadcast): ByteArray {
+            val content = JSONObject()
+            content.put(TextMessage.PAYLOAD_TEXT, text.text)
+            content.put(TextMessage.PAYLOAD_TEXT_FORMAT, text.formatInfo)
+            content.put(BROADCAST_ID, broadcast.id)
+            content.put(BROADCAST_LABEL, broadcast.label)
+            return content.toString().toByteArray()
         }
 
-        fun toMessageString(broadcastId: String, broadcastLabel: String, text: String): String {
-            val root = JSONObject()
-            root.put(BROADCAST_ID, broadcastId)
-            root.put(BROADCAST_LABEL, broadcastLabel)
-            root.put(MESSAGE, text)
-            return root.toString()
+        fun extractPayload(data: ByteArray): Broadcast {
+            val content = JSONObject(String(data))
+            if (!content.has(BROADCAST_ID) || !content.has(BROADCAST_LABEL)) {
+                Logging.e(TAG, "extractPayload [-] error while extract payload")
+                throw MessageParseException("Invalid payload", content.toString());
+            }
+            return Broadcast(content.getString(BROADCAST_ID), content.getString(BROADCAST_LABEL))
         }
     }
 
-    override fun getBroadcastId(): String {
-        return broadcastId
+    override fun getBroadcast(): Broadcast {
+        return broadcast
     }
 
 }

@@ -17,8 +17,11 @@ import com.google.android.material.snackbar.Snackbar
 import com.onionchat.common.Logging
 import com.onionchat.connector.BackendConnector
 import com.onionchat.connector.IConnectorCallback
-import com.onionchat.dr0id.messaging.messages.Message
+import com.onionchat.dr0id.messaging.IMessage
+import com.onionchat.dr0id.queue.OnionFuture
+import com.onionchat.dr0id.queue.tasks.SendMessageTask
 import com.onionchat.dr0id.service.OnionChatConnectionService
+import com.onionchat.dr0id.stream.StreamingWindow
 import com.onionchat.dr0id.ui.contactdetails.ContactDetailsActivity
 import com.onionchat.dr0id.ui.web.OnionWebActivity
 import com.onionchat.localstorage.userstore.Broadcast
@@ -134,7 +137,7 @@ abstract class OnionChatActivity : AppCompatActivity(), IConnectorCallback, Onio
     abstract override fun onConnected(success: Boolean)
 
 
-    override fun onReceiveMessage(message: Message): Boolean {
+    override fun onReceiveMessage(message: IMessage): Boolean {
         return false
     }
 
@@ -193,6 +196,7 @@ abstract class OnionChatActivity : AppCompatActivity(), IConnectorCallback, Onio
             parent.rotation = 180f
         }
         snackbar.setBackgroundTint(color)
+        snackbar.setTextColor(Color.BLACK)
         snackbar.show()
     }
 
@@ -201,7 +205,12 @@ abstract class OnionChatActivity : AppCompatActivity(), IConnectorCallback, Onio
     }
 
     fun openContactWebSpace(user: User) {
-        openOnionLinkInWebView("http://" + user.id + "/web/index.html", user.getName())
+        openOnionLinkInWebView("http://" + user.id + "/web/index.html", user.getHashedId())
+    }
+    fun openStreamWindow(user: User) {
+        val intent = Intent(this, StreamingWindow::class.java)
+        intent.putExtra(StreamingWindow.EXTRA_CONVERSATION_ID, user.id)
+        startActivity(intent)
     }
 
     fun openOnionLinkInWebView(url: String, username: String? = null) {
@@ -214,21 +223,29 @@ abstract class OnionChatActivity : AppCompatActivity(), IConnectorCallback, Onio
     }
 
     fun deleteNotifications() {
-        if(mBound) {
+        if (mBound) {
             mService.deleteNotifications()
         }
     }
 
 
-    fun openBroadcastDetails(id:String, resultLauncher: ActivityResultLauncher<Intent>) {
+    fun openBroadcastDetails(id: String, resultLauncher: ActivityResultLauncher<Intent>) {
         val intent = Intent(this, ContactDetailsActivity::class.java)
         intent.putExtra(ContactDetailsActivity.EXTRA_BROADCAST_ID, id)
         resultLauncher.launch(intent)
     }
 
-    fun openContactDetails(uid:String, resultLauncher: ActivityResultLauncher<Intent>) {
+    fun openContactDetails(uid: String, resultLauncher: ActivityResultLauncher<Intent>) {
         val intent = Intent(this, ContactDetailsActivity::class.java)
         intent.putExtra(ContactDetailsActivity.EXTRA_CONTACT_ID, uid)
         resultLauncher.launch(intent)
+    }
+
+    fun sendMessage(message: IMessage, fromUID: String, to: User): OnionFuture<SendMessageTask.SendMessageResult>? {
+        if (mBound) {
+            return mService.sendMessage(message, fromUID, to)
+        }
+        Logging.e(TAG, "sendMessage [-] service is not bounr [-] invalid state")
+        return null
     }
 }

@@ -1,14 +1,10 @@
-package com.onionchat.dr0id.users
+package com.onionchat.dr0id.database
 
-import android.content.Context
-import androidx.room.Room
 import com.onionchat.common.Crypto
 import com.onionchat.common.QrPayload
 import com.onionchat.common.Logging
 import com.onionchat.localstorage.userstore.User
-import com.onionchat.localstorage.userstore.UsersDatabase
 import java.util.concurrent.Callable
-import java.util.concurrent.Executors
 import java.util.concurrent.Future
 
 object UserManager {
@@ -24,7 +20,7 @@ object UserManager {
         return DatabaseManager.submit(object : Callable<User?> {
             override fun call(): User? {
                 Logging.d("UserManager", "getUserById(" + id + ")")
-                val users = DatabaseManager.db.userDao().loadAllByIds(arrayOf(id))
+                val users = DatabaseManager.db.userDao().getAllUsersByIds(arrayOf(id))
                 if(users.size == 0) {
                     return null
                 } else {
@@ -54,7 +50,7 @@ object UserManager {
     fun getAllUsers(): Future<List<User>> {
         return DatabaseManager.submit(object : Callable<List<User>> {
             override fun call(): List<User> {
-                return DatabaseManager.db.userDao().getAll()
+                return DatabaseManager.db.userDao().getAllUsers()
             }
         })
     }

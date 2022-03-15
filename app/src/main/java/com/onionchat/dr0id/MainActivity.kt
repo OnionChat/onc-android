@@ -11,7 +11,7 @@ import com.onionchat.connector.BackendConnector
 import com.onionchat.dr0id.service.OnionChatConnectionService
 import com.onionchat.dr0id.ui.contactlist.ContactListWindow
 import com.onionchat.dr0id.ui.onboarding.OnBoardingActivtiy
-import com.onionchat.dr0id.users.UserManager
+import com.onionchat.dr0id.database.UserManager
 
 class MainActivity : OnionChatActivity() {
 
@@ -43,7 +43,10 @@ class MainActivity : OnionChatActivity() {
         checkCrypto()
     }
 
+
+
     fun checkOnBoarding() {
+
         val doOnboarding = SettingsManager.getBooleanSetting(getString(R.string.key_onboarding), this)
 //        val doOnboarding = true
         if (doOnboarding) {

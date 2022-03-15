@@ -14,7 +14,7 @@ public class BackendConnector {
     public static IConnector getConnector() {
         if (connector == null) {
             connector = new TorConnector((type, data) -> {
-                Logging.d("BackendConnector", "listeners <" + listeners.size() + ">");
+//                Logging.d("BackendConnector", "listeners <" + listeners.size() + ">");
                 for (OnReceiveClientDataListener onReceiveClientDataListener : listeners) {
                     onReceiveClientDataListener.onReceive(type, data);
                 }

@@ -8,36 +8,31 @@ import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
-import android.webkit.WebChromeClient
-import android.webkit.WebView
+import android.view.WindowManager.LayoutParams.FLAG_SPLIT_TOUCH
 import android.widget.EditText
 import android.widget.ImageButton
+import android.widget.RelativeLayout
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.widget.Toolbar
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.bottomsheet.BottomSheetDialog
-import com.onionchat.common.IDGenerator
-import com.onionchat.common.Logging
-import com.onionchat.common.SettingsManager
-import com.onionchat.connector.Communicator
+import com.onionchat.common.*
 import com.onionchat.dr0id.OnionChatActivity
 import com.onionchat.dr0id.R
 import com.onionchat.dr0id.connectivity.ConnectionManager
-import com.onionchat.dr0id.messaging.MessagePacker
-import com.onionchat.dr0id.messaging.messages.BroadcastTextMessage
-import com.onionchat.dr0id.messaging.messages.Message
-import com.onionchat.dr0id.messaging.messages.MessageReadMessage
-import com.onionchat.dr0id.messaging.messages.TextMessage
+import com.onionchat.dr0id.database.BroadcastManager
+import com.onionchat.dr0id.database.MessageManager
+import com.onionchat.dr0id.database.UserManager
+import com.onionchat.dr0id.messaging.IMessage
+import com.onionchat.dr0id.messaging.MessageProcessor
+import com.onionchat.dr0id.messaging.SymmetricMessage
+import com.onionchat.dr0id.messaging.keyexchange.NegotiateSymKeyMessage
+import com.onionchat.dr0id.messaging.messages.*
+import com.onionchat.dr0id.queue.OnionTask
 import com.onionchat.dr0id.ui.contactdetails.ContactDetailsActivity
 import com.onionchat.dr0id.ui.web.MovableWebWindow
-import com.onionchat.dr0id.ui.web.OnionWebClient
-import com.onionchat.dr0id.users.BroadcastManager
-import com.onionchat.dr0id.users.UserManager
 import com.onionchat.localstorage.userstore.Conversation
-import com.onionchat.localstorage.userstore.User
-import java.lang.Thread.sleep
 
 
 open class ChatWindow : OnionChatActivity(), ChatAdapter.ItemClickListener {
@@ -46,18 +41,21 @@ open class ChatWindow : OnionChatActivity(), ChatAdapter.ItemClickListener {
     var mText: String = ""; // TODO temporary !!
     lateinit var mChatView: RecyclerView;
     lateinit var mMessageInput: EditText;
+    lateinit var mRootLayout: RelativeLayout;
     lateinit var mSendButton: ImageButton;
 
     var adapter: ChatAdapter? = null
-    val messageList = ArrayList<Message>()
+    val messageList = ArrayList<IMessage>()
     lateinit var resultLauncher: ActivityResultLauncher<Intent>
 
     companion object {
         val EXTRA_PARTNER_ID = "partnerId"
+        val TAG = "ChatWindow"
     }
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        window.setFlags(FLAG_SPLIT_TOUCH, FLAG_SPLIT_TOUCH)
         super.onCreate(savedInstanceState)
 
         // UI
@@ -72,12 +70,11 @@ open class ChatWindow : OnionChatActivity(), ChatAdapter.ItemClickListener {
                 openBroadcastDetails(it.id, resultLauncher)
             }
         }
-
+        mRootLayout = findViewById<RelativeLayout>(R.id.activity_chat_window_root)
         mMessageInput = findViewById(R.id.chat_window_message_enter)
         mSendButton = findViewById(R.id.chat_window_send_button)
         mChatView = findViewById(R.id.chat_window_message_display)
         mChatView.setLayoutManager(LinearLayoutManager(this));
-
         adapter = ChatAdapter(messageList)
         mChatView.adapter = adapter
 
@@ -107,6 +104,8 @@ open class ChatWindow : OnionChatActivity(), ChatAdapter.ItemClickListener {
 
         if (getChatPartner() == null) {
             updateConnectionState(ConnectionStatus.ERROR)
+        } else {
+            loadMessages() // todo make async
         }
     }
 
@@ -127,26 +126,62 @@ open class ChatWindow : OnionChatActivity(), ChatAdapter.ItemClickListener {
         return null
     }
 
-    override fun onReceiveMessage(message: Message): Boolean {
-        if (conversation == null) {
-            return false
-        }
-        if (message.from.equals(IDGenerator.toVisibleId(conversation!!.getId()))) {
-
-            if (message is BroadcastTextMessage) {
-                if (conversation?.broadcast != null) {
-                    if (conversation?.broadcast!!.id == message.broadcastId) {
-                        runOnUiThread {
-                            val old = messageList.count();
-                            messageList.add(message)
-                            adapter?.notifyItemInserted(old)
-                            mChatView.smoothScrollToPosition(old)
+    fun loadMessages() {
+        Thread {
+            conversation?.let { conversation ->
+                conversation.user?.certId?.let {
+                    val partnerPub = Crypto.getPublicKey(it)
+                    MessageManager.getAllForConversation(conversation).get()?.forEach {
+                        if (it.type != MessageTypes.MESSAGE_READ_MESSAGE.ordinal) {
+                            try {
+                                var pub = partnerPub
+                                if (it.hashedFrom.equals(IDGenerator.toHashedId(UserManager.myId!!))) {
+                                    pub = Crypto.getMyPublicKey()
+                                }
+                                MessageProcessor.unpack(it, pub, Crypto.getMyKey())?.let {
+                                    messageList.add(it)
+                                }
+                            } catch (exception: Exception) {
+                                Logging.e(TAG, "Error while decrypt message $it", exception)
+                                exception.message?.let {
+                                    messageList.add(InvalidMessage(it))
+                                }
+                            }
                         }
                     }
                 }
-                return true
-            } else if (message is TextMessage) {
-                sendMessageReadMessage(message.signature)
+            }
+            runOnUiThread {
+                if (messageList.isNotEmpty()) {
+                    adapter?.notifyDataSetChanged()
+                    mChatView.scrollToPosition(messageList.size - 1)
+                }
+            }
+        }.start()
+    }
+
+    override fun onReceiveMessage(message: IMessage): Boolean {
+        Logging.d(TAG, "onReceiveMessage <$message>")
+
+        if (conversation == null) {
+            return false
+        }
+
+        if (message is BroadcastTextMessage) {
+            if (conversation?.broadcast != null) {
+                if (conversation?.broadcast!!.id == message.getBroadcast().id) {
+                    runOnUiThread {
+                        val old = messageList.count();
+                        messageList.add(message)
+                        adapter?.notifyItemInserted(old)
+                        mChatView.smoothScrollToPosition(old)
+                    }
+                }
+            }
+            return true
+        } else if (message is TextMessage) {
+            if (message.hashedFrom == IDGenerator.toHashedId(conversation!!.getId())) {
+                sendMessageReadMessage(message)
                 runOnUiThread {
                     val old = messageList.count();
                     messageList.add(message)
@@ -154,21 +189,34 @@ open class ChatWindow : OnionChatActivity(), ChatAdapter.ItemClickListener {
                     mChatView.smoothScrollToPosition(old)
                 }
                 return true
+            }
+        } else if (message is NegotiateSymKeyMessage) {
+            if (message.hashedFrom == IDGenerator.toHashedId(conversation!!.getId())) {
+                runOnUiThread {
+                    val old = messageList.count();
+                    messageList.add(message)
+                    adapter?.notifyItemInserted(old)
+                    mChatView.smoothScrollToPosition(old)
+                }
+            }
+        } else if (message is MessageReadMessage) {
+            Logging.d(TAG, "Received message read message <" + message.messageSignature + ">")
+            messageList.forEachIndexed { i, it ->
+                if (it is SymmetricMessage && it.signature == message.messageSignature) {
+                    //it.read = true
+                    Logging.d(TAG, "Update status of message <" + it.messageId + ">")
 
-            } else if (message is MessageReadMessage) {
-                Logging.d("ChatWindow", "Received message read message <" + message.messageSignature + ">")
-                messageList.forEachIndexed { i, it ->
-                    if (IDGenerator.toVisibleId(it.signature) == message.messageSignature) {
-                        it.read = true
-                        runOnUiThread {
-                            adapter?.notifyItemChanged(i)
-                        }
+                    it.messageStatus = MessageStatus.addFlag(it.messageStatus, MessageStatus.READ) // todo add logic to message read task
+                    // todo update encrypted message ?
+                    runOnUiThread {
+                        adapter?.notifyItemChanged(i)
                     }
                 }
-                return true
-
             }
+            return true
+
         }
+
         // unknown message
         return false
     }
@@ -177,36 +225,28 @@ open class ChatWindow : OnionChatActivity(), ChatAdapter.ItemClickListener {
         if (!success) {
             updateConnectionState(ConnectionStatus.ERROR)
         } else {
+            updateConnectionState(ConnectionStatus.CONNECTING)
             startRecursivePing()
         }
     }
 
-    var noTests = 10
 
-    fun startRecursivePing() {
-        conversation?.user?.let {
-            updateConnectionState(ConnectionStatus.CONNECTING)
-            noTests = 10
-            recursivePing(it)
-        }
-    }
-
-    fun recursivePing(user: User) {
-
-        ConnectionManager.isUserOnline(user) {
-            if (!it) {
-                sleep(1000)
-                noTests -= 1
-                if (noTests == 0) {
-                    runOnUiThread {
-                        updateConnectionState(ConnectionStatus.ERROR)
+    fun startRecursivePing(tries: Int = 4) {
+        if (tries <= 0) {
+            runOnUiThread {
+                updateConnectionState(ConnectionStatus.ERROR)
+            }
+            return
+        } else {
+            conversation?.user?.let {
+                ConnectionManager.isUserOnline(it) {
+                    if (it) {
+                        runOnUiThread {
+                            updateConnectionState(ConnectionStatus.CONNECTED)
+                        }
+                    } else {
+                        startRecursivePing(tries - 1)
                     }
-                } else {
-                    recursivePing(user)
-                }
-            } else {
-                runOnUiThread {
-                    updateConnectionState(ConnectionStatus.CONNECTED)
                 }
             }
         }
@@ -236,6 +276,11 @@ open class ChatWindow : OnionChatActivity(), ChatAdapter.ItemClickListener {
                     openContactWebSpace(it)
                 }
             }
+            R.id.open_stream -> {
+                conversation?.user?.let {
+                    openStreamWindow(it)
+                }
+            }
             else -> {
             }
         }
@@ -243,69 +288,86 @@ open class ChatWindow : OnionChatActivity(), ChatAdapter.ItemClickListener {
     }
 
 
-    fun sendMessageReadMessage(signatureStr: String) {
-        conversation?.user?.let {
-            if (SettingsManager.getBooleanSetting(getString(R.string.key_enable_message_read), this)) {
-                Logging.d("ChatWindow", "send message read message <" + signatureStr + ">")
-                val message = MessageReadMessage(IDGenerator.toVisibleId(signatureStr), UserManager.myId!!)
-                Communicator.sendMessage(it.id, MessagePacker.encodeMessage(message, it.certId))
-            } else {
-                Logging.d("ChatWindow", "message read is disabled")
+    fun sendMessageReadMessage(message: IMessage) {
+        if (message is SymmetricMessage) {
+            conversation?.user?.let { // todo broadcast ?
+                if (SettingsManager.getBooleanSetting(getString(R.string.key_enable_message_read), this)) {
+                    Logging.d(TAG, "send message read message <" + message.signature + ">")
+
+                    val readMessage = MessageReadMessage(
+                        messageSignature = message.signature,
+                        hashedFrom = IDGenerator.toHashedId(UserManager.myId!!),
+                        hashedTo = message.hashedFrom
+                    )// TODO ?
+                    sendMessage(readMessage, UserManager.myId!!, it) // TODO ?
+                    //Communicator.sendMessage(it.id, MessageProcessor.encodeMessage(message, it.certId))
+                } else {
+                    Logging.d(TAG, "message read is disabled")
+                }
             }
         }
-
     }
 
     fun sendTextMessage(text: String) {
         var listId = 0;
-        var message = TextMessage(text, UserManager.myId!!)
+
         conversation?.user?.let {
-            Communicator.sendMessage(it.id, MessagePacker.encodeMessage(message, it.certId)) {
-                message.status = it
-                runOnUiThread {
-                    if (listId != 0) {
-                        adapter?.notifyItemChanged(listId)
-                    } else {
-                        adapter?.notifyDataSetChanged()
-                    }
+            var message = TextMessage(
+                textData = TextMessageData(text, ""), // todo add format info
+                hashedFrom = IDGenerator.toHashedId(UserManager.myId!!),
+                hashedTo = it.getHashedId()
+            )
+            sendMessage(message, UserManager.myId!!, it)?.then {
+                if (it.status == OnionTask.Status.SUCCESS) {
+                    message.messageStatus = MessageStatus.addFlag(message.messageStatus, MessageStatus.SENT)
                 }
             }
+//            Communicator.sendMessage(it.id, MessageProcessor.pack(message, it.certId)) {
+//                message.status = it
+//                runOnUiThread {
+//                    if (listId != 0) {
+//                        adapter?.notifyItemChanged(listId)
+//                    } else {
+//                        adapter?.notifyDataSetChanged()
+//                    }
+//                }
+//            }
+
+            runOnUiThread {
+                listId = messageList.size
+                messageList.add(message)
+                adapter?.notifyItemInserted(listId)
+                mChatView.smoothScrollToPosition(listId)
+            }
         }
-        conversation?.broadcast?.let {
-            message = BroadcastTextMessage(it.id, it.label, text, UserManager.myId!!)
-            Thread {
-                // do that asynchronous
-                UserManager.getAllUsers().get()?.forEach { // todo send this only to users added to the broadcast
-                    Communicator.sendMessage(it.id, MessagePacker.encodeMessage(message, it.certId)) {
-                        message.status = it
-                        runOnUiThread {
-                            if (listId != 0) {
-                                adapter?.notifyItemChanged(listId)
-                            } else {
-                                adapter?.notifyDataSetChanged()
-                            }
-                        }
-                    }
-                }
-            }.start()
-        }
+//        conversation?.broadcast?.let { // todo handle broadcast ?
+//            message = BroadcastTextMessage(it.id, it.label, text, UserManager.myId!!)
+//            Thread {
+//                // do that asynchronous
+//                BroadcastManager.getBroadcastUsers(it).get()?.forEach { // todo send this only to users added to the broadcast
+//                    Communicator.sendMessage(it.id, MessageProcessor.pack(message, it.certId)) {
+//                        message.status = it
+//                        runOnUiThread {
+//                            if (listId != 0) {
+//                                adapter?.notifyItemChanged(listId)
+//                            } else {
+//                                adapter?.notifyDataSetChanged()
+//                            }
+//                        }
+//                    }
+//                }
+//            }.start()
+//    }
 
 
-
-        runOnUiThread {
-            listId = messageList.size
-            messageList.add(message)
-            adapter?.notifyItemInserted(listId)
-            mChatView.smoothScrollToPosition(listId)
-        }
     }
 
     override fun onItemClick(view: View?, position: Int) {
         val clipboard: ClipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         conversation?.getLabel()?.let {
-            if (messageList[position] is TextMessage) {
-                val textMessage = messageList[position] as TextMessage
-                val clip = ClipData.newPlainText(it, textMessage.getText())
+            if (messageList[position] is ITextMessage) {
+                val textMessage = messageList[position] as ITextMessage
+                val clip = ClipData.newPlainText(it, textMessage.getText().text)
                 clipboard.setPrimaryClip(clip)
             }
 
@@ -360,7 +422,7 @@ open class ChatWindow : OnionChatActivity(), ChatAdapter.ItemClickListener {
 //
 //        bottomSheetDialog.show()
 
-        val window = MovableWebWindow(mChatView, this, url)
+        val window = MovableWebWindow(mRootLayout, this, url)
         window.show()
     }
 }
