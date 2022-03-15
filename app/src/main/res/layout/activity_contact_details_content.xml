@@ -18,11 +18,20 @@
         tools:srcCompat="@tools:sample/avatars"
         android:background="@drawable/user_image_background"/>
 
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/activity_contact_details_user_label"
+        android:padding="10dp"
+        android:layout_below="@+id/activity_contact_details_avatar"
+        />
+
+
     <LinearLayout
         android:id="@+id/button_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_below="@+id/activity_contact_details_avatar"
+        android:layout_below="@+id/activity_contact_details_user_label"
         android:orientation="horizontal"
         android:padding="5dp">
 
@@ -53,4 +62,18 @@
             android:backgroundTint="?attr/colorPrimary"/>
         />
     </LinearLayout>
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/activity_contact_details_key_info"
+        android:layout_below="@+id/button_bar"
+        />
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/contact_details_receivers_selection"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/activity_contact_details_key_info"
+        android:layout_alignParentBottom="true"
+
+        />
 </RelativeLayout>

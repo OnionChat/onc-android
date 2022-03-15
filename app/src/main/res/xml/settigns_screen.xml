@@ -1,51 +1,54 @@
-<PreferenceScreen
-    xmlns:app="http://schemas.android.com/apk/res-auto">
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
 
 
-    <PreferenceCategory
-        app:title="Notifications">
+    <PreferenceCategory app:title="Notifications">
         <SwitchPreferenceCompat
+            app:defaultValue="true"
             app:key="@string/key_notifications"
-            app:title="Enable notifications"
-            app:defaultValue="true"
-            />
+            app:title="Enable notifications" />
         <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:dependency="@string/key_notifications"
             app:key="@string/key_ping_notifications"
-            app:title="Enable ping notifications"
             app:summary="Enable notifications when pinged by a user"
+            app:title="Enable ping notifications" />
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="Data Privacy">
+        <SwitchPreferenceCompat
             app:defaultValue="true"
-            app:dependency="@string/key_notifications"/>
-    </PreferenceCategory>
-
-    <PreferenceCategory
-        app:title="Data Privacy">
-        <SwitchPreferenceCompat
             app:key="@string/key_enable_web"
-            app:title="Enable personal web space"
             app:summary="Enables your personal webspace.\n\nJust enable this setting and push you're website to /sdcard/Android/data/com.onionchat.dr0id/files/web/[index.html]"
-            app:defaultValue="true"/>
+            app:title="Enable personal web space" />
         <SwitchPreferenceCompat
+            app:defaultValue="true"
             app:key="@string/key_enable_message_read"
-            app:title="Message read indicator"
             app:summary="By enable this option OnionChat will send a message status update to initiators once you've read his message"
-            app:defaultValue="true"/>
-        <SwitchPreferenceCompat
-            app:key="@string/key_enable_message_forwarding"
-            app:title="Message forwarding"
-            app:summary="By enable this option OnionChat will forward all messages you receive via Broadcasts to all users in your contact list"
-            app:defaultValue="true"/>
-        <SwitchPreferenceCompat
-            app:key="@string/key_allow_broadcast_adding"
-            app:title="Allow auto add broatcast"
-            app:summary="By enable this option your contacts are allowed to add you to new broadcasts"
-            app:defaultValue="true"/>
+            app:title="Message read indicator" />
     </PreferenceCategory>
 
-<!--
-    <Preference
-        app:key="feedback"
-        app:title="Send feedback"
-        app:summary="Report technical issues or suggest new features"
-        />
--->
+    <PreferenceCategory app:title="Broadcast">
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:key="@string/key_enable_message_forwarding"
+            app:summary="By enable this option OnionChat will forward Broadcasts to other OnionChat users. This enables the peer2peer funcctionality."
+            app:title="Message forwarding" />
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:key="@string/key_allow_broadcast_adding"
+            app:summary="By enable this option your contacts are allowed to add you to new broadcasts"
+            app:title="Allow auto add broatcast" />
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:key="@string/key_default_add_all_users"
+            app:summary="Forward broadcasts to all users by default. Your broadcast specific settings will override this rule."
+            app:title="Forward to all by default" />
+    </PreferenceCategory>
+    <!--
+        <Preference
+            app:key="feedback"
+            app:title="Send feedback"
+            app:summary="Report technical issues or suggest new features"
+            />
+    -->
 </PreferenceScreen>

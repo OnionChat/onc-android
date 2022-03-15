@@ -40,6 +40,13 @@
     <string name="key_enable_message_forwarding">message_forwarding</string>
     <string name="key_onboarding">shall_do_onboarding</string>
     <string name="key_allow_broadcast_adding">allow_broadcast_adding</string>
+    <string name="key_user_label">user_label</string>
     <string name="drag_here">Drag here..</string>
     <string name="fragment_create_broadcast_label">Create Broadcast</string>
+    <string name="fragment_broadcast_receivers_label">Select members</string>
+    <string name="key_default_add_all_users">key_default_add_all_users</string>
+    <string name="user_label_fragment_title">Define username</string>
+    <string name="user_label_fragment_hint">My crazy name</string>
+    <string name="user_label_fragment_label">Set username</string>
+    <string name="start">Start</string>
 </resources>

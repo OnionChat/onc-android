@@ -45,7 +45,7 @@
         android:layout_alignParentRight="true"
         android:visibility="invisible"
         android:backgroundTint="#00ff00"
-        app:srcCompat="@drawable/outline_person_add_alt_black_48"
+        app:srcCompat="@drawable/baseline_qr_code_black_48"
 />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -57,7 +57,7 @@
         android:visibility="invisible"
         android:layout_above="@+id/contact_list_generate_fab"
         android:layout_alignParentRight="true"
-        app:srcCompat="@drawable/outline_person_add_black_48"
+        app:srcCompat="@drawable/baseline_qr_code_scanner_black_48"
         android:backgroundTint="#0000ff"
         />
 

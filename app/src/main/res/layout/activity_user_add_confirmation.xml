@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".adduser.UserAddConfirmationActivity"
+    android:padding="20dp">
+
+
+    <ImageView
+        android:id="@+id/user_add_confirmation__avatar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_centerInParent="true"
+        android:padding="10dp"
+        tools:srcCompat="@tools:sample/avatars"
+        android:background="@drawable/user_image_background"/>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/user_add_confirmation_user_label"
+        android:padding="10dp"
+        android:layout_below="@+id/user_add_confirmation__avatar"
+        />
+
+
+
+    <LinearLayout
+        android:id="@+id/button_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/user_add_confirmation_user_label"
+        android:orientation="horizontal"
+        android:padding="5dp">
+
+        <ImageButton
+            android:id="@+id/user_add_confirmation_button_positive"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="5dp"
+            android:layout_weight="1"
+            android:src="@drawable/outline_delete_black_24"
+            android:backgroundTint="?attr/colorPrimary"/>
+
+        <ImageButton
+            android:id="@+id/user_add_confirmation_button_negative"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="5dp"
+            android:layout_weight="1"
+            android:src="@drawable/outline_preview_black_24"
+            android:backgroundTint="?attr/colorPrimary"/>
+
+    </LinearLayout>
+
+</RelativeLayout>

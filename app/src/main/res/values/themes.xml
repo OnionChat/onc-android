@@ -2,20 +2,21 @@
     <!-- Base application theme. -->
     <style name="Theme.OnionChat" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
         <!-- Primary brand color. -->
-        <item name="colorPrimary">#00ff00</item>
+        <item name="colorPrimary">#00df00</item>
         <item name="colorPrimaryVariant">#000000</item>
         <item name="colorOnPrimary">@color/black</item>
         <!-- Secondary brand color. -->
-        <item name="colorSecondary">#00cc00</item>
-        <item name="colorSecondaryVariant">#00cc00</item>
+        <item name="colorSecondary">#00bb00</item>
+        <item name="colorSecondaryVariant">#00bb00</item>
         <item name="colorOnSecondary">@color/black</item>
-        <item name="colorControlNormal">#00cc00</item>
+        <item name="colorControlNormal">#00bb00</item>
         <item name="android:actionMenuTextColor">@color/black</item>
         <item name="android:windowBackground">@color/black</item>
         <item name="android:textColorPrimary">#ffffff</item>
         <item name="android:textColor">#ffffffff</item>
         <!-- Status bar color. -->
         <item name="android:statusBarColor" tools:targetApi="l">?attr/colorPrimaryVariant</item>
+        <item name="bubbleBackground" tools:targetApi="l">#002200</item>
 
         <!-- Customize your theme here. -->
         <item name="snackbarStyle">@style/Widget.Design.MySnackBar</item>

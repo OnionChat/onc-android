@@ -6,6 +6,7 @@
     android:layout_height="match_parent"
     tools:context=".ui.chat.ChatWindow"
     android:orientation="vertical"
+    android:id="@+id/activity_chat_window_root"
     app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
     <androidx.coordinatorlayout.widget.CoordinatorLayout

@@ -18,7 +18,7 @@
     <fragment
         android:id="@+id/SelectBroadCastReceiversFragment"
         android:name="com.onionchat.dr0id.ui.broadcast.SelectBroadCastReceiversFragment"
-        android:label="@string/second_fragment_label"
+        android:label="@string/fragment_broadcast_receivers_label"
         tools:layout="@layout/fragment_broadcast_receivers">
 
         <action

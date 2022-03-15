@@ -31,8 +31,15 @@
         android:label="@string/third_fragment_label"
         tools:layout="@layout/fragment_third">
 
-        <!--<action
-            android:id="@+id/action_SecondFragment_to_FirstFragment"
-            app:destination="@id/FirstFragment" />-->
+        <action
+            android:id="@+id/action_ThirdFragment_to_UserLabelFragment"
+            app:destination="@id/UserLabelFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/UserLabelFragment"
+        android:name="com.onionchat.dr0id.ui.onboarding.UserLabelFragment"
+        android:label="@string/user_label_fragment_label"
+        tools:layout="@layout/user_label_fragment">
+
     </fragment>
 </navigation>

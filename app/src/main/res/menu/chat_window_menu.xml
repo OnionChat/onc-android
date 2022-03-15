@@ -14,4 +14,9 @@
         android:icon="@drawable/outline_preview_black_48"
         android:title="Web"
         app:showAsAction="always" />
+    <item
+        android:id="@+id/open_stream"
+        android:icon="@drawable/outline_campaign_black_24"
+        android:title="Web"
+        app:showAsAction="always" />
 </menu>
