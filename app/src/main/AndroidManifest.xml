@@ -1,15 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="com.onionchat.dr0id" >
+    package="com.onionchat.dr0id">
 
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <permission android:name="${applicationId}.memorycontentprovider.permission.WRITE" />
+    <permission android:name="${applicationId}.encryptedvideoprovider.permission.WRITEVIDEO" />
+    <permission android:name="${applicationId}.encryptedvideoprovider.permission.READVIDEO" />
     <application
         android:name=".OnionChatApplication"
         android:allowBackup="true"
@@ -19,13 +25,35 @@
         android:roundIcon="@drawable/onion_pixel_green"
         android:supportsRtl="true"
         android:theme="@style/Theme.OnionChat"
-        android:usesCleartextTraffic="true" >
+        android:usesCleartextTraffic="true">
         <activity
-            android:name=".adduser.UserAddConfirmationActivity"
+            android:name=".ui.stats.UserStatsActivity"
             android:exported="true" />
         <activity
-            android:name=".stream.StreamingWindow"
+            android:name=".ui.conversationList.ConversationListWindow"
             android:exported="true" />
+        <activity
+            android:name=".ui.viewer.ImageViewer"
+            android:exported="true" />
+        <activity
+            android:name=".ui.importer.MediaImporter"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:mimeType="image/*" />
+                <!--<data android:mimeType="video/*" /> -->
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".ui.adduser.UserAddConfirmationActivity"
+            android:exported="true" />
+        <activity
+            android:name=".ui.stream.StreamingWindow"
+            android:exported="true"
+            android:screenOrientation="portrait" />
         <activity
             android:name=".ui.broadcast.EditBroadCastActivity"
             android:exported="true" />
@@ -41,7 +69,7 @@
             android:theme="@style/Theme.OnionChat.NoActionBar" />
         <activity
             android:name=".ui.web.OnionWebActivity"
-            android:exported="true" >
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
 
@@ -58,15 +86,18 @@
         <service
             android:name=".service.OnionChatConnectionService"
             android:enabled="true" />
+        <service
+            android:name=".service.OnionChatSyncService"
+            android:enabled="true" />
 
         <activity
             android:name=".ui.info.InfoActivtiy"
             android:exported="true" />
         <activity
-            android:name=".adduser.QrViewer"
+            android:name=".ui.adduser.QrViewer"
             android:exported="true" />
         <activity
-            android:name=".adduser.QrScanner"
+            android:name=".ui.adduser.QrScanner"
             android:exported="true" />
         <activity
             android:name=".ui.chat.ChatWindow"
@@ -77,13 +108,8 @@
             android:exported="true"
             android:screenOrientation="portrait" />
         <activity
-            android:name=".ui.contactlist.ContactListWindow"
-            android:exported="true"
-            android:label="@string/title_activity_contact_list"
-            android:screenOrientation="portrait" />
-        <activity
             android:name=".MainActivity"
-            android:exported="true" >
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -96,6 +122,35 @@
             android:screenOrientation="portrait"
             android:stateNotNeeded="true"
             tools:replace="android:screenOrientation" />
+
+        <receiver android:name=".broadcast.AlarmReceiver" />
+        <receiver
+            android:name=".broadcast.BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+        <provider
+            android:name=".contentprovider.MemoryContentProvider"
+            android:authorities="${applicationId}.memorycontentprovider"
+            android:exported="true"
+            android:grantUriPermissions="true"
+            android:multiprocess="true"
+            android:syncable="false"
+            android:writePermission="${applicationId}.memorycontentprovider.permission.WRITE"
+            tools:ignore="ExportedContentProvider" />
+        <provider
+            android:name=".contentprovider.EncryptedVideoProvider"
+            android:authorities="${applicationId}.encryptedvideoprovider"
+            android:exported="true"
+            android:grantUriPermissions="true"
+            android:multiprocess="true"
+            android:syncable="false"
+            android:writePermission="${applicationId}.encryptedvideoprovider.permission.WRITEVIDEO"
+            android:readPermission="${applicationId}.encryptedvideoprovider.permission.READVIDEO"
+            tools:ignore="ExportedContentProvider" />
+
     </application>
 
 </manifest>

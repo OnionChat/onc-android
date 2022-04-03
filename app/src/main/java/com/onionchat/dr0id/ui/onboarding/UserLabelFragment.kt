@@ -40,14 +40,8 @@ class UserLabelFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
-//        binding.buttonSecond.setOnClickListener {
-//            findNavController().navigate(R.id.action_SecondFragment_to_FirstFragment)
-//        }
         binding.userLabelFragmentButton.setOnClickListener {
             context?.let {
-                //SettingsManager.setBooleanSetting(getString(R.string.key_onboarding), false, it)
-                //startActivity(Intent(it, MainActivity::class.java))
                 binding.userLabelFragmentEdit.text?.toString()?.let { label ->
                     if (!label.matches(Regex(regexPattern))) {
                         binding.userLabelFragmentEdit.error = "Doesn't match requirements"
@@ -69,7 +63,6 @@ class UserLabelFragment : Fragment() {
                         }?: run{
                             binding.userLabelFragmentEdit.error = "No crypto available"
                         }
-
                     }
                 }
             }

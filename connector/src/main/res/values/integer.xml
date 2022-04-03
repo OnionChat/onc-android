@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+
+    <integer name="http_tunnel_proposal">18400</integer>
+    <integer name="socks_tunnel_proposal">19299</integer>
+</resources>

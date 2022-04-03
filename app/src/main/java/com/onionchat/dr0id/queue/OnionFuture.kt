@@ -1,8 +1,9 @@
 package com.onionchat.dr0id.queue
 
+import java.util.concurrent.ExecutorService
 import java.util.concurrent.Future
 
-class OnionFuture<K : OnionTask.Result>(private val future: Future<K>) {
+class OnionFuture<K : OnionTask.Result>(val executor: ExecutorService, private val future: Future<K>) {
 
 
     fun get(): K {
@@ -10,8 +11,8 @@ class OnionFuture<K : OnionTask.Result>(private val future: Future<K>) {
     }
 
     fun then(callback: (K) -> Unit) {
-        Thread {
+        executor.submit {
             callback(future.get())
-        }.start()
+        }
     }
 }

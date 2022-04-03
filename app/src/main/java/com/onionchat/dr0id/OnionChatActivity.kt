@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.graphics.Color
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import android.os.PersistableBundle
@@ -14,20 +16,29 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.appcompat.app.AppCompatActivity
 import androidx.coordinatorlayout.widget.CoordinatorLayout
 import com.google.android.material.snackbar.Snackbar
+import com.onionchat.common.AddUserPayload
+import com.onionchat.common.IDGenerator
 import com.onionchat.common.Logging
-import com.onionchat.connector.BackendConnector
-import com.onionchat.connector.IConnectorCallback
+import com.onionchat.dr0id.connectivity.ConnectionManager
+import com.onionchat.dr0id.connectivity.PingPayload
+import com.onionchat.dr0id.connectivity.PingPayload.Companion.PURPOSE_STREAM
+import com.onionchat.dr0id.database.Conversation
+import com.onionchat.dr0id.database.UserManager
 import com.onionchat.dr0id.messaging.IMessage
 import com.onionchat.dr0id.queue.OnionFuture
+import com.onionchat.dr0id.queue.OnionTask
+import com.onionchat.dr0id.queue.tasks.CheckConnectionTask
 import com.onionchat.dr0id.queue.tasks.SendMessageTask
 import com.onionchat.dr0id.service.OnionChatConnectionService
-import com.onionchat.dr0id.stream.StreamingWindow
-import com.onionchat.dr0id.ui.contactdetails.ContactDetailsActivity
-import com.onionchat.dr0id.ui.web.OnionWebActivity
+import com.onionchat.dr0id.ui.ActivityLauncher
+import com.onionchat.dr0id.ui.errorhandling.ErrorViewer
+import com.onionchat.dr0id.ui.errorhandling.ErrorViewer.showError
+import com.onionchat.localstorage.messagestore.EncryptedMessage
 import com.onionchat.localstorage.userstore.Broadcast
 import com.onionchat.localstorage.userstore.User
+import java.io.InputStream
 
-abstract class OnionChatActivity : AppCompatActivity(), IConnectorCallback, OnionChatConnectionService.ServiceClient {
+abstract class OnionChatActivity : AppCompatActivity(), OnionChatConnectionService.ServiceClient {
 
     private lateinit var mService: OnionChatConnectionService
     private var mBound: Boolean = false
@@ -47,7 +58,9 @@ abstract class OnionChatActivity : AppCompatActivity(), IConnectorCallback, Onio
             mBound = true
             mService.addClient(this@OnionChatActivity)
             Logging.d(TAG, "ask service for connectivity status")
-            mService.checkConnection(this@OnionChatActivity)
+            mService.checkConnection().then {
+                onCheckConnectionFinished(it)
+            }
         }
 
         override fun onBindingDied(name: ComponentName?) {
@@ -70,12 +83,16 @@ abstract class OnionChatActivity : AppCompatActivity(), IConnectorCallback, Onio
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Logging.d(TAG, "startForegroundService")
-        startForegroundService(Intent(this, OnionChatConnectionService::class.java));
+        startService(Intent(this, OnionChatConnectionService::class.java))
     }
 
     override fun onCreate(savedInstanceState: Bundle?, persistentState: PersistableBundle?) {
         super.onCreate(savedInstanceState, persistentState)
-        startForegroundService(Intent(this, OnionChatConnectionService::class.java));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(Intent(this, OnionChatConnectionService::class.java))
+        } else {
+            startService(Intent(this, OnionChatConnectionService::class.java))
+        }
     }
 
     override fun onStart() {
@@ -94,11 +111,18 @@ abstract class OnionChatActivity : AppCompatActivity(), IConnectorCallback, Onio
 //            unbindService(connection)
 //            mBound = false
 //        }
+//        if (mBound) {
+//
+//        } else {
+//            Logging.d(TAG, "onResume [-] unable to remove client")
+//        }
     }
 
     override fun onDestroy() {
         super.onDestroy()
         if (mBound) {
+            Logging.d(TAG, "onDestroy [+] removeClient")
+            mService.removeClient(this@OnionChatActivity)
             try {
                 unbindService(connection)
             } catch (e: Exception) {
@@ -108,6 +132,7 @@ abstract class OnionChatActivity : AppCompatActivity(), IConnectorCallback, Onio
         }
     }
 
+    var isTopActivity = false
     override fun onResume() {
         super.onResume()
         if (mBound) {
@@ -116,78 +141,115 @@ abstract class OnionChatActivity : AppCompatActivity(), IConnectorCallback, Onio
         } else {
             Logging.d(TAG, "onResume [-] unable to add client")
         }
+        isTopActivity = true
     }
 
     override fun onPause() {
         super.onPause()
-        if (mBound) {
-            Logging.d(TAG, "onResume [+] removeClient")
-            mService.removeClient(this@OnionChatActivity)
-        } else {
-            Logging.d(TAG, "onResume [-] unable to remove client")
-        }
+        isTopActivity = false
     }
 
     fun checkConnection() {
         if (mBound) {
-            mService.checkConnection(this@OnionChatActivity)
+            mService.checkConnection()
         }
     }
 
-    abstract override fun onConnected(success: Boolean)
+    override fun onConnectionStateChanged(state: ConnectionManager.ConnectionState) {
+    }
+
+    abstract fun onCheckConnectionFinished(status: CheckConnectionTask.CheckConnectionResult)
 
 
-    override fun onReceiveMessage(message: IMessage): Boolean {
+    override fun onReceiveMessage(message: IMessage?, encryptedMessage: EncryptedMessage): Boolean {
         return false
     }
 
-    override fun onPingReceived(data: String) {
+    override fun onPingReceived(pingPayload: PingPayload): Boolean {
+        try {
+
+            if (pingPayload.purpose == PURPOSE_STREAM) {// todo move to activity launcher class
+                UserManager.getUserByHashedId(pingPayload.uid).get()?.let {
+                    openStreamWindow(it, true)
+                }
+            }
+        } catch (exception: java.lang.Exception) {
+            Logging.e(TAG, "onPingReceived [+] unable to handle ping", exception)
+        }
+        return true
     }
 
-    fun applyNewCirciut() {
-        val circuit = BackendConnector.getConnector().newCirciut()
-        Logging.d("ContactListWindow", "Applied new circiut <" + circuit + ">");
-        Toast.makeText(this, "APPLIED NEW CIRCUIT: " + circuit, Toast.LENGTH_SHORT).show()
+    override fun onStreamRequested(inputStream: InputStream): Boolean {
+        return false
+    }
+
+    @Deprecated("mirgrate to user online status state machine")
+    fun startRecursivePing(tries: Int = 4, user: User, purpose: PingPayload = PingPayload()) {
+        Logging.d(TAG, "startRecursivePing ${user.id}")
+        if (tries <= 0) {
+            onConversationOnline(false)
+//            runOnUiThread {
+//                updateConnectionState(ConnectionStatus.ERROR)
+//            }
+            return
+        } else {
+            ConnectionManager.pingUser(user, purpose).then {
+                if(it.status == OnionTask.Status.SUCCESS) {
+                    onConversationOnline(true)
+//                    runOnUiThread {
+//                        updateConnectionState(ConnectionStatus.CONNECTED)
+//                    }
+                } else {
+                    startRecursivePing(tries - 1, user, purpose)
+                }
+            }
+        }
+    }
+
+    open fun onConversationOnline(online: Boolean) {
+
+    }
+
+    fun newTorIdentity() {
+        val res = ConnectionManager.newTorIdentity()
+        Logging.d("ContactListWindow", "Applied new circiut <" + res + ">");
+        Toast.makeText(this, "APPLIED NEW CIRCUIT: " + res, Toast.LENGTH_SHORT).show()
     }
 
 
-    enum class ConnectionStatus {
-        CONNECTING,
-        CONNECTED,
-        ERROR,
-        PINGING
-    }
 
-
-    fun updateConnectionState(connectionStatus: ConnectionStatus) {
+    fun updateConnectionState(state: ConnectionManager.ConnectionState) {
         var message = ""
         var color = 0
         var duration = Snackbar.LENGTH_LONG
-        when (connectionStatus) {
-            ConnectionStatus.CONNECTING -> {
+        when(state) {
+            ConnectionManager.ConnectionState.CONNECTING -> {
                 message = "Connecting"
                 color = Color.GREEN
                 duration = Snackbar.LENGTH_INDEFINITE
             }
-            ConnectionStatus.CONNECTED -> {
+            ConnectionManager.ConnectionState.CONNECTED -> {
                 message = "Connected"
                 color = Color.GREEN
             }
-            ConnectionStatus.ERROR -> {
+            ConnectionManager.ConnectionState.DISCONNECTED -> {
+                message = "Connecting"
+                color = Color.GREEN
+                duration = Snackbar.LENGTH_INDEFINITE
+            }
+            ConnectionManager.ConnectionState.ERROR -> {
+
                 message = "Not Connected. Please try it later."
                 color = Color.RED
                 duration = Snackbar.LENGTH_INDEFINITE
-            }
-            ConnectionStatus.PINGING -> {
-                message = "Pinging"
-                color = Color.GREEN
             }
             else -> {
                 message = "UNKNOWN ERROR."
                 color = Color.RED
             }
         }
-        val coordinatorLayout = findViewById<View>(R.id.coordinatorLayout) as CoordinatorLayout
+
+        val coordinatorLayout = findViewById<View>(R.id.coordinatorLayout) as CoordinatorLayout? ?: return
         val snackbar = Snackbar
             .make(coordinatorLayout, message, duration)
         val snackBarLayout = snackbar.getView() as Snackbar.SnackbarLayout
@@ -205,21 +267,19 @@ abstract class OnionChatActivity : AppCompatActivity(), IConnectorCallback, Onio
     }
 
     fun openContactWebSpace(user: User) {
-        openOnionLinkInWebView("http://" + user.id + "/web/index.html", user.getHashedId())
+        openOnionLinkInWebView(user.id)
     }
-    fun openStreamWindow(user: User) {
-        val intent = Intent(this, StreamingWindow::class.java)
-        intent.putExtra(StreamingWindow.EXTRA_CONVERSATION_ID, user.id)
-        startActivity(intent)
+
+    fun openContactWebSpace(userId: String) {
+        openOnionLinkInWebView("http://" + userId + "/web/index.html", IDGenerator.toHashedId(userId))
+    }
+
+    fun openStreamWindow(user: User, incomming: Boolean = false) {
+        ActivityLauncher.openStreamWindow(user, incomming, this)
     }
 
     fun openOnionLinkInWebView(url: String, username: String? = null) {
-        val intent = Intent(this, OnionWebActivity::class.java)
-        intent.putExtra(OnionWebActivity.EXTRA_URL, url)
-        username?.let {
-            intent.putExtra(OnionWebActivity.EXTRA_USERNAME, it)
-        }
-        startActivity(intent)
+        ActivityLauncher.openOnionLinkInWebView(url, username, this)
     }
 
     fun deleteNotifications() {
@@ -228,20 +288,50 @@ abstract class OnionChatActivity : AppCompatActivity(), IConnectorCallback, Onio
         }
     }
 
+    fun openStatsActivity(user: User) {
+        ActivityLauncher.openStatsActivity(user, this)
+    }
+
+    fun openImageImporter(resultLauncher: ActivityResultLauncher<Intent>) {
+        ActivityLauncher.openImageImporter(null, false, resultLauncher, this)
+    }
+
+    fun openImageImporter(uri: Uri?, autoSelectFeed: Boolean = false, resultLauncher: ActivityResultLauncher<Intent>) {
+        ActivityLauncher.openImageImporter(uri, autoSelectFeed, resultLauncher, this)
+    }
+
+    fun openVideoGallery(resultLauncher: ActivityResultLauncher<Intent>) {
+        ActivityLauncher.openVideoGallery(resultLauncher)
+    }
+
+    fun openGallery(resultLauncher: ActivityResultLauncher<Intent>) {
+        ActivityLauncher.openGallery(resultLauncher, this)
+    }
+
+    fun openTakePhoto(resultLauncher: ActivityResultLauncher<Intent>) {
+
+        if (!ActivityLauncher.openTakePhoto(resultLauncher, this)) {
+            showError(this, getString(R.string.error_cannot_open_camera), ErrorViewer.ErrorCode.CAMERA_INTENT_NOT_FOUND)
+        }
+    }
 
     fun openBroadcastDetails(id: String, resultLauncher: ActivityResultLauncher<Intent>) {
-        val intent = Intent(this, ContactDetailsActivity::class.java)
-        intent.putExtra(ContactDetailsActivity.EXTRA_BROADCAST_ID, id)
-        resultLauncher.launch(intent)
+        ActivityLauncher.openBroadcastDetails(id, resultLauncher, this)
     }
 
     fun openContactDetails(uid: String, resultLauncher: ActivityResultLauncher<Intent>) {
-        val intent = Intent(this, ContactDetailsActivity::class.java)
-        intent.putExtra(ContactDetailsActivity.EXTRA_CONTACT_ID, uid)
-        resultLauncher.launch(intent)
+        ActivityLauncher.openContactDetails(uid, resultLauncher, this)
+    }
+
+    fun openContactAddConfirmation(payload: AddUserPayload, resultLauncher: ActivityResultLauncher<Intent>) {
+        ActivityLauncher.openContactAddConfirmation(payload, resultLauncher, this)
     }
 
     fun sendMessage(message: IMessage, fromUID: String, to: User): OnionFuture<SendMessageTask.SendMessageResult>? {
+        return sendMessage(message, fromUID, Conversation(user = to))
+    }
+
+    fun sendMessage(message: IMessage, fromUID: String, to: Conversation): OnionFuture<SendMessageTask.SendMessageResult>? {
         if (mBound) {
             return mService.sendMessage(message, fromUID, to)
         }

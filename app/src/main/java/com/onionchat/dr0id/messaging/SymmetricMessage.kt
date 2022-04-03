@@ -28,18 +28,19 @@ open class SymmetricMessage(
         val EXTRA_IV = "iv"
         val EXTRA_ALIAS = "alias"
 
+
         fun encrypt(symmetricMessage: SymmetricMessage, alias: String, myPrivate: Key): EncryptedMessage? {
-            Logging.d(TAG, "decrypt [-] going to encrypt symmetric message <$symmetricMessage> with alias <$alias>")
+            Logging.d(TAG, "encrypt [-] going to encrypt symmetric message <$symmetricMessage> with alias <$alias>")
             val targetSymmetricKey = Crypto.getSymmetricKey(alias)
             if (targetSymmetricKey == null) {
                 Logging.e(TAG, "encrypt [-] unable to retrieve symmetric key <$alias>")
                 return null
             }
-            val cipher = Crypto.encryptSym(targetSymmetricKey)
-            val data = cipher.doFinal(symmetricMessage.data)
-            val extras = JSONObject()
-            Logging.d(TAG, "encrypt [+] encryptSym(${targetSymmetricKey.algorithm}, ${cipher.iv.size}, ${symmetricMessage.data.size}) res ${data.size}")
-            extras.put(EXTRA_IV, Base64.encodeToString(cipher.iv, Base64.DEFAULT))
+            val res = Crypto.encryptSym(targetSymmetricKey, symmetricMessage.data)
+            val data = res.encryptedData
+            val extras = if (symmetricMessage.extra.isEmpty()) JSONObject() else JSONObject(symmetricMessage.extra)
+            Logging.d(TAG, "encrypt [+] encryptSym(${targetSymmetricKey.algorithm}, ${res.iv.size}, ${symmetricMessage.data.size}) res ${data.size}")
+            extras.put(EXTRA_IV, Base64.encodeToString(res.iv, Base64.DEFAULT))
             extras.put(EXTRA_ALIAS, alias)
 
             Crypto.sign(myPrivate, data)?.let {
@@ -62,8 +63,11 @@ open class SymmetricMessage(
             }
         }
 
-        fun decrypt(encryptedMessage: EncryptedMessage, sourcePub: Certificate): SymmetricMessage? {
+        fun decrypt(encryptedMessage: EncryptedMessage, sourcePub: Certificate?): SymmetricMessage? {
             Logging.d(TAG, "decrypt [-] going to decrypt symmetric message <$encryptedMessage>")
+            if(sourcePub == null ) {
+                Logging.e(TAG, "decrypt [-] sourcePub is null. Cannot validate signature !!! This is an untrusted message !! shall we show it?")
+            }
             val extras = JSONObject(encryptedMessage.extra)
             if (!extras.has(EXTRA_ALIAS) || !extras.has(EXTRA_IV)) {
                 Logging.e(TAG, "decrypt [-] invalid extras <${encryptedMessage.extra}>")
@@ -77,7 +81,7 @@ open class SymmetricMessage(
                 throw UnknownKeyException("Unable to find key <$alias>", alias)
             }
             Crypto.decryptSym(key, iv, encryptedMessage.encryptedMessageBytes)?.let { decryptedData ->
-                if (Crypto.verify(sourcePub, encryptedMessage.encryptedMessageBytes, Base64.decode(encryptedMessage.signature, Base64.DEFAULT))) {
+                if (sourcePub == null || Crypto.verify(sourcePub, encryptedMessage.encryptedMessageBytes, Base64.decode(encryptedMessage.signature, Base64.DEFAULT))) {
                     return SymmetricMessage(
                         encryptedMessage.messageId,
                         decryptedData,
@@ -87,7 +91,8 @@ open class SymmetricMessage(
                         encryptedMessage.messageStatus,
                         encryptedMessage.created,
                         encryptedMessage.read,
-                        encryptedMessage.type
+                        encryptedMessage.type,
+                        encryptedMessage.extra
                     )
                 } else {
                     Logging.e(TAG, "Error while verify message <$encryptedMessage>")

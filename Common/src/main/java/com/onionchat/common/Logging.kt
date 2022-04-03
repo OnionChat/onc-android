@@ -4,6 +4,12 @@ import android.util.Log
 
 object Logging {
 
+    @JvmStatic
+    fun v(tag: String, message: String) {
+        if(BuildConfig.DEBUG) {
+            Log.v(tag, message)
+        }
+    }
 
     @JvmStatic
     fun get(): Logging {
@@ -12,7 +18,9 @@ object Logging {
 
     @JvmStatic
     fun d(tag: String, message: String) {
-        Log.d(tag, message);
+        if(BuildConfig.DEBUG) {
+            Log.d(tag, message);
+        }
     }
 
     @JvmStatic

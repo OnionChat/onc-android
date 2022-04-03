@@ -1,8 +1,11 @@
 package com.onionchat.dr0id.messaging
 
+import com.onionchat.common.DateTimeHelper
 import com.onionchat.localstorage.messagestore.EncryptedMessage
+import java.text.SimpleDateFormat
+import java.util.*
 
-abstract class IMessage(    val messageId: String = java.util.UUID.randomUUID().toString(),
+abstract class IMessage(    val messageId: String = UUID.randomUUID().toString(),
                             var hashedFrom: String,
                             var hashedTo: String,
                             var signature: String = "",
@@ -13,5 +16,23 @@ abstract class IMessage(    val messageId: String = java.util.UUID.randomUUID().
                             var extra: String = "") {
 
     abstract fun getMessageType(): Int
+
+    fun getCreationTimeText(): String {
+        return DateTimeHelper.timestampToTimeString(created)
+    }
+
+    fun getCreationDateText(): String {
+        return DateTimeHelper.timestampToDateString(created)
+    }
+
+    override fun toString(): String {
+        return "IMessage(messageId='$messageId', hashedFrom='$hashedFrom', hashedTo='$hashedTo', signature='$signature', messageStatus=$messageStatus, created=$created, read=$read, type=$type, extra='$extra')"
+    }
+
+    companion object {
+        const val EXTRA_QUOTED_MESSAGE_ID = "quoted_message_id"
+    }
+
+
 
 }

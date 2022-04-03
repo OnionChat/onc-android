@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:id="@+id/post_attachments_buttons_bar">
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/compose_fab"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="@dimen/fab_margin"
+        android:layout_marginBottom="16dp"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentRight="true"
+        android:backgroundTint="#00ff00"
+        app:srcCompat="@android:drawable/ic_input_add" />
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/post_attachments_button_gallery"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/compose_fab"
+        android:layout_alignParentRight="true"
+        android:layout_marginBottom="24dp"
+        android:backgroundTint="?attr/post_nutton_color_gallery"
+        android:visibility="visible"
+        app:fabSize="normal"
+        app:srcCompat="@drawable/outline_collections_black_48" />
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/post_attachments_button_camera"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/post_attachments_button_gallery"
+        android:layout_alignParentRight="true"
+        android:layout_marginBottom="24dp"
+        android:backgroundTint="?attr/post_nutton_color_camera"
+        android:visibility="visible"
+        app:fabSize="normal"
+        app:srcCompat="@drawable/outline_add_a_photo_black_48" />
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/post_attachments_video_gallery"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/post_attachments_button_camera"
+        android:layout_alignParentRight="true"
+        android:layout_marginBottom="24dp"
+        android:backgroundTint="?attr/post_nutton_color_audio"
+        android:visibility="visible"
+        app:fabSize="normal"
+        app:srcCompat="@drawable/outline_movie_black_24" />
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/post_attachments_button_audio"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/post_attachments_video_gallery"
+        android:layout_alignParentRight="true"
+        android:layout_marginBottom="24dp"
+        android:backgroundTint="?attr/post_nutton_color_audio"
+        android:visibility="visible"
+        app:fabSize="normal"
+        app:srcCompat="@drawable/baseline_mic_black_24" />
+</RelativeLayout>

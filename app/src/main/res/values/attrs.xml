@@ -3,6 +3,13 @@
 
 
     <attr name="bubbleBackground" format="color" />
+    <attr name="bubbleBackground_two" format="color" />
+    <attr name="texting_area" format="color" />
+    <attr name="quotesBackground" format="color" />
+    <attr name="post_nutton_color_gallery" format="color" />
+    <attr name="post_nutton_color_camera" format="color" />
+    <attr name="post_nutton_color_audio" format="color" />
+    <attr name="post_nutton_color_compose" format="color" />
 
 
 </resources>

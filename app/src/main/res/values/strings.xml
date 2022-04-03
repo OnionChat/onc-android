@@ -50,4 +50,28 @@
     <string name="user_label_fragment_label">Set username</string>
     <string name="start">Start</string>
     <string name="connecting">Connecting...</string>
+    <string name="unknown_error">Unknown Error</string>
+    <string name="unable_to_send_response">Unable to send response</string>
+    <string name="unable_to_send_attachment">Unable to send attachment</string>
+    <string name="crypto_error">Crypto information lost. Please reinstall application! Your app data is lost.</string>
+    <string name="error_cannot_import_image" type="id">Cannot import image</string>
+    <string name="error_illegal_state">Illegal state</string>
+    <string name="error_cannot_send_image">Cannot send image</string>
+    <string name="key_enable_powersafe">key_enable_powersafe</string>
+    <string name="summary_powersafe_mode">By enable this option OnionChat will try to save your battery as much as possible. It\'s possible that messages are received with a delay.</string>
+    <string name="onion_chat_service_foregreound_message">OnionChat is connected in background and listening for messages\n\nEnable powersafe mode to decrease energy consumption</string>
+    <string name="feed_fragment_title">Feed</string>
+    <string name="conversation_list_fragment_title">Conversations</string>
+    <string name="error_cannot_open_camera">Unable to open camera</string>
+    <string name="error_cannot_extract_photo">Cannot open photo</string>
+    <string name="onilne">Online</string>
+    <string name="error_key_negotiation_failed">Key negotiation failed. Try again later.</string>
+    <string name="error_unable_to_show_stats">Unable to show stats</string>
+    <string name="error_unable_to_create_video_attachment">Unable to send video</string>
+    <string name="attachment_too_big">Attachment is too big. Maximum is: </string>
+    <string name="ping_notification_title">You were pinged</string>
+    <string name="ping_notification_message">You have been pinged by a user. May you wanna chat?</string>
+    <string name="sync_message">Checking for new messages</string>
+    <string name="sync_title">Synchronize</string>
+
 </resources>

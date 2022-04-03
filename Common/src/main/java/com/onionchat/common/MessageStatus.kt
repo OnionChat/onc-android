@@ -27,7 +27,7 @@ enum class MessageStatus(val status: Int) {
         fun setFlags(vararg status: MessageStatus): Int {
             var intStatus = 0
             status.forEach {
-                intStatus = intStatus or it.ordinal
+                intStatus = intStatus or it.status
             }
             return intStatus
         }
@@ -39,7 +39,7 @@ enum class MessageStatus(val status: Int) {
                     state += it.name + ", "
                 }
             }
-            return "$state}";
+            return "$state} ($status)";
         }
     }
 

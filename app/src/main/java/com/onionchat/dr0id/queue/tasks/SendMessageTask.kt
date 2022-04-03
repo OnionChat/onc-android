@@ -2,19 +2,20 @@ package com.onionchat.dr0id.queue.tasks
 
 import com.onionchat.common.Crypto
 import com.onionchat.common.Logging
-import com.onionchat.common.MessageStatus
-import com.onionchat.connector.http.OnionClient
 import com.onionchat.dr0id.database.MessageManager
 import com.onionchat.dr0id.messaging.IMessage
 import com.onionchat.dr0id.messaging.MessageProcessor
+import com.onionchat.dr0id.queue.OnionFuture
 import com.onionchat.dr0id.queue.OnionTask
 import com.onionchat.localstorage.messagestore.EncryptedMessage
-import com.onionchat.localstorage.userstore.User
+import com.onionchat.dr0id.database.Conversation
+import com.onionchat.dr0id.database.ConversationType
+import java.security.cert.Certificate
 
-class SendMessageTask(val message: IMessage, fromUID: String, val to: User) : OnionTask<SendMessageTask.SendMessageResult>() {
+class SendMessageTask(val message: IMessage, val to: Conversation) : OnionTask<SendMessageTask.SendMessageResult>() {
 
 
-    class SendMessageResult(success: Status, sentResult: OnionClient.MessageSentResult? = null, exception: java.lang.Exception? = null) :
+    class SendMessageResult(success: Status, val sendingFuture: OnionFuture<ForwardMessageTask.ForwardMessageResult>? = null, val encryptedMessage: EncryptedMessage? = null, exception: java.lang.Exception? = null) :
         OnionTask.Result(success, exception) {
 
     }
@@ -31,17 +32,14 @@ class SendMessageTask(val message: IMessage, fromUID: String, val to: User) : On
         val myPrivate = Crypto.getMyKey()
 
         //// target user crypto
-        val pub = Crypto.getPublicKey(to.certId)
-        if (pub == null) {
-            Logging.d(TAG, "run [-] no asymmetric key found for user $to")
+        val certId = to.getCertId()
+
+        var pub : Certificate? = null
+        if(certId != null) {
+            pub = Crypto.getPublicKey(certId)
         }
 
-        var symKeyAlias: String? = null
-        if (to.symaliases == null || to.symaliases!!.isEmpty()) {
-            Logging.d(TAG, "run [-] no symmetric key found for user $to")
-        } else {
-            symKeyAlias = to.getLastAlias()!!.alias // todo check if timestamp sort is correct
-        }
+        var symKeyAlias: String? = to.getLastSymAlias()
 
         // 2. pack the message
         val encryptedMessage = MessageProcessor.pack(message, pub, myPrivate, symKeyAlias)
@@ -59,14 +57,15 @@ class SendMessageTask(val message: IMessage, fromUID: String, val to: User) : On
         }
 
         // 4. send message
-        val result = OnionClient.postmessage(EncryptedMessage.toJson(encryptedMessage), to.id).get() // todo forward ?
-        if(result == OnionClient.MessageSentResult.SENT) {
-            encryptedMessage.messageStatus = MessageStatus.addFlag(encryptedMessage.messageStatus, MessageStatus.SENT)
-            MessageManager.updateEncryptedMessage(encryptedMessage)
-            Logging.d(TAG, "run [+] successfully sent message $encryptedMessage")
-            return SendMessageResult(Status.SUCCESS, result)
-        }
-        return SendMessageResult(Status.FAILURE, result)
+
+//        val result = OnionClient.postmessage(EncryptedMessage.toJson(encryptedMessage), to.id).get() // todo forward ?
+//        if(result == OnionClient.MessageSentResult.SENT) {
+//            encryptedMessage.messageStatus = MessageStatus.addFlag(encryptedMessage.messageStatus, MessageStatus.SENT)
+//            MessageManager.updateEncryptedMessage(encryptedMessage)
+//            Logging.d(TAG, "run [+] successfully sent message $encryptedMessage")
+//            return SendMessageResult(Status.SUCCESS, result, encryptedMessage)
+//        }
+        return SendMessageResult(Status.PENDING, enqueueFollowUpTaskPriority(ForwardMessageTask(encryptedMessage)), encryptedMessage = encryptedMessage)
 
     }
 

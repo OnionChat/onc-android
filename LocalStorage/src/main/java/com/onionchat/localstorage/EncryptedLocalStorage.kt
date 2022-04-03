@@ -3,6 +3,7 @@ package com.onionchat.localstorage
 import android.content.Context
 import android.util.Base64
 import com.onionchat.common.Crypto
+import com.onionchat.common.Logging
 import java.security.Key
 import java.security.cert.Certificate
 import javax.crypto.Cipher
@@ -29,16 +30,23 @@ class EncryptedLocalStorage(val cert: Certificate, val cryptoKey: Key, val conte
     }
 
     fun getValue(key: String): String? {
-
-        context.getSharedPreferences(STORAGE_NAME, Context.MODE_PRIVATE)?.getString(key, null)?.let {
-            val encrypted_bytes = Base64.decode(it, Base64.DEFAULT)
-            val cipher: Cipher = Cipher.getInstance(Crypto.ASYMMETRIC_ALGORITHM)
-            cipher.init(Cipher.DECRYPT_MODE, cryptoKey)
-            val decryptedBytes = cipher.doFinal(encrypted_bytes)
-            return String(decryptedBytes)
+        try {
+            context.getSharedPreferences(STORAGE_NAME, Context.MODE_PRIVATE)?.getString(key, null)?.let {
+                val encrypted_bytes = Base64.decode(it, Base64.DEFAULT)
+                val cipher: Cipher = Cipher.getInstance(Crypto.ASYMMETRIC_ALGORITHM)
+                cipher.init(Cipher.DECRYPT_MODE, cryptoKey)
+                val decryptedBytes = cipher.doFinal(encrypted_bytes)
+                return String(decryptedBytes)
+            }
+        } catch (e: Exception) {
+            Logging.e(TAG, "getMyLabel [-] Unable to decrypt label")
+            return null
         }
         return null
     }
 
 
+    companion object {
+        const val TAG = "EncryptedLocalStorage"
+    }
 }

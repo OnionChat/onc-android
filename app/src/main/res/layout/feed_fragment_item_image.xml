@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:id="@+id/feed_fragment_item_root"
+    android:layout_marginTop="12dp"
+    android:layout_marginBottom="12dp"
+    android:layout_marginStart="5dp"
+    android:layout_marginEnd="5dp"
+    app:cardBackgroundColor="?attr/bubbleBackground"
+    >
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+        <include layout="@layout/feed_fragment_item_header" android:id="@+id/feed_fragment_item_header_include"
+            android:layout_height="wrap_content" android:layout_width="match_parent"/>
+<!--
+            <ImageButton
+                android:id="@+id/item_image"
+                android:layout_width="200dp"
+                android:layout_height="wrap_content"
+                android:layout_margin="7dp"
+                android:layout_weight="1"
+                android:src="@android:drawable/gallery_thumb"
+                style="?android:attr/borderlessButtonStyle"
+                android:adjustViewBounds="true"
+                />
+
+-->
+        <ImageButton
+            android:id="@+id/feed_fragment_item_web_image_imagebutton"
+            android:layout_width="match_parent"
+            android:layout_height="250dp"
+            style="?android:attr/borderlessButtonStyle"
+            android:adjustViewBounds="true"
+            android:src="@android:drawable/gallery_thumb"
+
+            android:layout_margin="7dp"
+            android:layout_below="@+id/feed_fragment_item_header_include"
+            />
+        <include layout="@layout/feed_fragment_item_footer" android:id="@+id/feed_fragment_item_footer_include"
+            android:layout_below="@+id/feed_fragment_item_web_image_imagebutton"
+            android:layout_height="wrap_content" android:layout_width="match_parent"
+            />
+
+    </RelativeLayout>
+
+
+</com.google.android.material.card.MaterialCardView>

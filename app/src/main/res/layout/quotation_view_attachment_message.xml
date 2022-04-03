@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <TextView
+        android:id="@+id/quotation_view_attachment_item_username"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:text="username"
+        android:textSize="11sp"
+        android:visibility="gone"
+        android:maxLines="1"
+        />
+
+    <TextView
+        android:id="@+id/quotation_view_attachment_item_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="item"
+        android:textStyle="italic"
+        android:textColor="?android:attr/textColorPrimary"
+        android:textAppearance="@style/TextAppearance.AppCompat.Small"
+        android:layout_margin="7dp"
+        android:layout_weight="1"/>
+    <TextView
+        android:id="@+id/quotation_view_attachment_item_time"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:text="time"
+        android:textSize="11sp"
+        />
+</RelativeLayout>

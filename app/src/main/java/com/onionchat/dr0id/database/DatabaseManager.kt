@@ -11,6 +11,8 @@ import java.util.concurrent.Executors
 import java.util.concurrent.Future
 
 object DatabaseManager {
+    const val TAG = "DatabaseManager"
+
     lateinit var db: UsersDatabase;
 
     var executorService = Executors.newFixedThreadPool(1)
@@ -51,9 +53,53 @@ object DatabaseManager {
             )
         }
     }
+    val MIGRATION_5_6: Migration = object : Migration(5,6) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+
+            database.execSQL(
+                "Create table contactdetails (id TEXT PRIMARY KEY NOT NULL,userid TEXT NOT NULL, alias TEXT NOT NULL,avatar BLOB NOT NULL, extra TEXT NOT NULL, timestamp INTEGER NOT NULL, FOREIGN KEY(userid) REFERENCES User(id) ON UPDATE NO ACTION ON DELETE CASCADE)"
+            )
+            database.execSQL(
+                "CREATE INDEX index_ContactDetails_userid ON ContactDetails(userid)"
+            )
+        }
+    }
+    val MIGRATION_6_7: Migration = object : Migration(6,7) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+
+            database.execSQL(
+                "Create table messageforwardinfo (id TEXT PRIMARY KEY NOT NULL, message_id TEXT NOT NULL, user_id TEXT NOT NULL,timestamp INTEGER NOT NULL, FOREIGN KEY(message_id) REFERENCES EncryptedMessage(message_id) ON UPDATE NO ACTION ON DELETE CASCADE)"
+            )
+            database.execSQL(
+                "CREATE INDEX index_MessageForwardInfo_message_id ON MessageForwardInfo(message_id)"
+            )
+        }
+    }
+    val MIGRATION_7_8: Migration = object : Migration(7,8) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+
+            database.execSQL(
+                "Create table messagereadinfo (id TEXT PRIMARY KEY NOT NULL, message_id TEXT NOT NULL, user_id TEXT NOT NULL,timestamp INTEGER NOT NULL, FOREIGN KEY(message_id) REFERENCES EncryptedMessage(message_id) ON UPDATE NO ACTION ON DELETE CASCADE)"
+            )
+            database.execSQL(
+                "CREATE INDEX index_MessageReadInfo_message_id ON MessageReadInfo(message_id)"
+            )
+            database.execSQL(
+                "Create table feedkey (id TEXT PRIMARY KEY NOT NULL,encrypted_key BLOB NOT NULL, alias TEXT NOT NULL, timestamp INTEGER NOT NULL)"
+            )
+        }
+    }
+    val MIGRATION_8_9: Migration = object : Migration(8,9) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+
+            database.execSQL(
+                "Create table pinginfo (id TEXT PRIMARY KEY NOT NULL, userId TEXT NOT NULL,  purpose TEXT NOT NULL, status INTEGER NOT NULL, version INTEGER NOT NULL, timestamp INTEGER NOT NULL, extra TEXT NOT NULL)"
+            )
+        }
+    }
     fun initDatabase(context: Context) {
         executorService.submit {
-            Logging.d("UserManager", "initDatabase - call builder")
+            Logging.d(TAG, "initDatabase - call builder")
             db = Room.databaseBuilder(
                 context.applicationContext,
                 UsersDatabase::class.java, "contacts"
@@ -61,16 +107,13 @@ object DatabaseManager {
              .addMigrations(MIGRATION_2_3)
              .addMigrations(MIGRATION_3_4)
              .addMigrations(MIGRATION_4_5)
+             .addMigrations(MIGRATION_5_6)
+             .addMigrations(MIGRATION_6_7)
+             .addMigrations(MIGRATION_7_8)
+             .addMigrations(MIGRATION_8_9)
                 .build()
-            Logging.d("UserManager", "initDatabase - check dummies")
-            /*if (getAllUsers().get().isEmpty()) {
-                Logging.log("UserManager", "initDatabase - user dummy data")
-                addUser(User("25eb3d9ec4a6019c", "1"))
-                addUser(User("893190354fb2c072", "2"))
-            }*/
-//            addUser(User("7rksqbjmgbvhxzmed5vz7wey5s4ajpwmnh6dvmmaf22pwyhe7djw7had.onion", "3"))
-//            addUser(User("nlblw3jxzwkxaug7q3pekpqqudg4qvvpzc7lljeno52qzaihu2cw63yd.onion", "2"))
-            Logging.d("UserManager", "initDatabase - database build has finished... finally")
+// https://github.com/sqlcipher/android-database-sqlcipher
+            Logging.d(TAG, "initDatabase - database build has finished... finally")
         }
     }
 

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:id="@+id/feed_fragment_item_root"
+    android:layout_marginTop="12dp"
+    android:layout_marginBottom="12dp"
+    android:layout_marginStart="5dp"
+    android:layout_marginEnd="5dp"
+    app:cardBackgroundColor="?attr/bubbleBackground"
+    >
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+        <include layout="@layout/feed_fragment_item_header" android:id="@+id/feed_fragment_item_header_include"
+            android:layout_height="wrap_content" android:layout_width="match_parent"/>
+
+
+
+
+
+        <com.google.android.exoplayer2.ui.StyledPlayerView
+            android:id="@+id/feed_fragment_item_video_videoview"
+            android:layout_width="match_parent"
+            android:layout_height="250dp"
+            style="?android:attr/borderlessButtonStyle"
+
+            android:src="@android:drawable/gallery_thumb"
+
+            android:layout_margin="7dp"
+            android:layout_below="@+id/feed_fragment_item_header_include"
+            />
+
+        <ImageView
+            android:id="@+id/feed_fragment_item_video_preview"
+            android:layout_width="match_parent"
+            android:layout_height="250dp"
+            android:layout_margin="7dp"
+            android:layout_weight="1"
+            style="?android:attr/borderlessButtonStyle"
+            android:adjustViewBounds="true"
+            android:layout_below="@+id/feed_fragment_item_header_include"
+            />
+        <ImageButton
+            android:id="@+id/feed_fragment_item_video_download"
+            android:layout_width="match_parent"
+            android:layout_height="250dp"
+            android:layout_margin="7dp"
+            android:layout_weight="1"
+            android:src="@drawable/baseline_get_app_white_48"
+            style="?android:attr/borderlessButtonStyle"
+            android:adjustViewBounds="true"
+            android:layout_below="@+id/feed_fragment_item_header_include"
+            />
+        <ProgressBar
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_centerInParent="true"
+            android:id="@+id/feed_fragment_item_video_progress"
+            android:visibility="visible"/>
+        <include layout="@layout/feed_fragment_item_footer" android:id="@+id/feed_fragment_item_footer_include"
+            android:layout_below="@+id/feed_fragment_item_video_videoview"
+            android:layout_height="wrap_content" android:layout_width="match_parent"
+            />
+
+    </RelativeLayout>
+
+
+</com.google.android.material.card.MaterialCardView>

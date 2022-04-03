@@ -7,11 +7,17 @@ import android.widget.TextView
 import com.onionchat.common.Crypto
 import com.onionchat.common.Logging
 import com.onionchat.common.SettingsManager
-import com.onionchat.connector.BackendConnector
+import com.onionchat.dr0id.broadcast.AlarmReceiver
+import com.onionchat.dr0id.broadcast.AlarmReceiver.Companion.alarmQuestion
+import com.onionchat.dr0id.broadcast.AlarmReceiver.Companion.scheduleAlarmReceiver
+import com.onionchat.dr0id.connectivity.ConnectionManager
 import com.onionchat.dr0id.service.OnionChatConnectionService
-import com.onionchat.dr0id.ui.contactlist.ContactListWindow
 import com.onionchat.dr0id.ui.onboarding.OnBoardingActivtiy
 import com.onionchat.dr0id.database.UserManager
+import com.onionchat.dr0id.queue.tasks.CheckConnectionTask
+import com.onionchat.dr0id.ui.conversationList.ConversationListWindow
+import com.onionchat.dr0id.ui.errorhandling.ErrorViewer
+import com.onionchat.dr0id.ui.errorhandling.ErrorViewer.showError
 
 class MainActivity : OnionChatActivity() {
 
@@ -35,7 +41,11 @@ class MainActivity : OnionChatActivity() {
                 //connect()
             }
         })
-        checkOnBoarding()
+        if(checkCrypto()) {
+            checkOnBoarding()
+        }
+//        AlarmReceiver.powerSafeQuestion(this)
+//        alarmQuestion(this)
     }
 
     override fun onResume() {
@@ -53,42 +63,66 @@ class MainActivity : OnionChatActivity() {
             startActivity(Intent(this, OnBoardingActivtiy::class.java))
             finish()
         } else {
-            updateText("Connecting...")
-            startForegroundService(Intent(this, OnionChatConnectionService::class.java));
+            updateText("Starting...")
+            scheduleAlarmReceiver(this) // todo right place?
+            startService(Intent(this, OnionChatConnectionService::class.java))
+
+//            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+//                //startForegroundService(Intent(this, OnionChatConnectionService::class.java))
+//                scheduleBackgroundService(this) // todo right place?
+//            } else {
+//                startService(Intent(this, OnionChatConnectionService::class.java))
+//            }
+            launchContactList()
         }
     }
 
-    fun checkCrypto() {
+    fun checkCrypto() : Boolean {
         Logging.d("MainActivity", "check crypto")
-        if (Crypto.getMyPublicKey() == null) {
+
+
+        if (Crypto.getMyPublicKey() == null ) {
             Logging.d("MainActivity", "init new crypto")
             updateText("Generate keys...")
             Crypto.generateKey()
             if (Crypto.getMyPublicKey() == null) {
                 updateText("Error while init crypto... you're f** up")
                 Logging.e("MainActivity", "Error while init crypto... you're f** up")
-                return
+                return false
+            }
+        } else {
+            try{
+                Crypto.getMyKey()
+            }catch (exception:Exception) {
+                showError(this, getString(R.string.crypto_error), ErrorViewer.ErrorCode.INVALID_PRIVATE_KEY)
+                updateText(getString(R.string.crypto_error)+ " ($exception)")
+                return false
             }
         }
+        return true
 
-        updateText("Connecting...")
+        //updateText("Connecting...")
         //connect()
     }
 
-    override fun onConnected(success: Boolean) {
-        if (success) {
-            UserManager.myId = BackendConnector.getConnector().getHostName(this)
+    override fun onCheckConnectionFinished(status: CheckConnectionTask.CheckConnectionResult) {
+//        if (success) {
+//
+//            //task = "reconnect"
+//        } else {
+//            updateText("Unable to connect.. tap to retry")
+//        }
+    }
 
-            if (task == null || !task.equals(TASK_RECONNECTED)) {
-                Logging.d("MainActivity", "Going to start contactlist")
-                val intent = Intent(this@MainActivity, ContactListWindow::class.java)
-                startActivity(intent)
-            }
-            finish()
-            //task = "reconnect"
-        } else {
-            updateText("Unable to connect.. tap to retry")
+    fun launchContactList() {
+        UserManager.myId = ConnectionManager.getHostName(this)
+
+        if (task == null || !task.equals(TASK_RECONNECTED)) {
+            Logging.d(TAG, "launchContactList [+] Going to start contactlist")
+            val intent = Intent(this@MainActivity, ConversationListWindow::class.java)
+            startActivity(intent)
         }
+        finish()
     }
 
     fun updateText(str: String) {

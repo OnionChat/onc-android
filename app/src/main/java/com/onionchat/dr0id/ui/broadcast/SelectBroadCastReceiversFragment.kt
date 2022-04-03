@@ -7,11 +7,10 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.onionchat.dr0id.database.BroadcastManager
 import com.onionchat.dr0id.database.UserManager
 import com.onionchat.dr0id.databinding.FragmentBroadcastReceiversBinding
 import com.onionchat.dr0id.ui.contactlist.ContactListAdapter
-import com.onionchat.localstorage.userstore.Conversation
+import com.onionchat.dr0id.database.Conversation
 import com.onionchat.localstorage.userstore.User
 
 /**

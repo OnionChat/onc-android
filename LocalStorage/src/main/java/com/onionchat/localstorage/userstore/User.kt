@@ -12,11 +12,17 @@ data class User(@PrimaryKey val id: String, @ColumnInfo(name = "cert_id") val ce
     @Ignore
     var symaliases: List<SymAlias>? = null
 
+    @Ignore
+    var details: List<ContactDetails>? = null
+
     fun getHashedId(): String {
         return IDGenerator.toHashedId(id)
     }
 
-    fun getLastAlias(): SymAlias? {
+    fun getLastAlias(): ContactDetails? {
+        return details?.maxByOrNull { it.timestamp } // todo check if timestamp sort is correct
+    }
+    fun getLastSymAlias(): SymAlias? {
         return symaliases?.maxByOrNull { it.timestamp } // todo check if timestamp sort is correct
     }
 }

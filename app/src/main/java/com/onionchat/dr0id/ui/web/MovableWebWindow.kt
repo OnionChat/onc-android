@@ -5,6 +5,7 @@ import android.content.Context.LAYOUT_INFLATER_SERVICE
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewGroup
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
@@ -16,7 +17,7 @@ import com.onionchat.dr0id.R
 import java.lang.reflect.Method
 
 
-class MovableWebWindow(val view: RelativeLayout, private val context: Context, private val url: String) {
+class MovableWebWindow(val view: ViewGroup, private val context: Context, private val url: String) {
 
 
     fun show() {

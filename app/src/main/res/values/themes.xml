@@ -16,24 +16,36 @@
         <item name="android:textColor">#ffffffff</item>
         <!-- Status bar color. -->
         <item name="android:statusBarColor" tools:targetApi="l">?attr/colorPrimaryVariant</item>
-        <item name="bubbleBackground" tools:targetApi="l">#002200</item>
 
+        <item name="bubbleBackground" tools:targetApi="l">#002200</item>
+        <item name="bubbleBackground_two" tools:targetApi="l">#20322f</item>
+        <item name="texting_area" tools:targetApi="l">#003200</item>
         <!-- Customize your theme here. -->
         <item name="snackbarStyle">@style/Widget.Design.MySnackBar</item>
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
+        <item name="quotesBackground">#444444</item>
+        <item name="post_nutton_color_gallery">#bb4444</item>
+        <item name="post_nutton_color_camera">#4400aa</item>
+        <item name="post_nutton_color_audio">#44aacc</item>
+        <item name="post_nutton_color_compose">#ffffaa</item>
+        <item name="android:subtitleTextColor">#000000</item>
+
     </style>
 
 
 
     <style name="Theme.OnionChat.AppBarOverlay" parent="ThemeOverlay.AppCompat.Light" >
         <item name="android:textColorPrimary">#000000</item>
-
+        <item name="android:subtitleTextColor">#000000</item>
     </style>
+
+
 
     <style name="Theme.OnionChat.PopupOverlay" parent="ThemeOverlay.AppCompat.Light" >
         <item name="android:actionMenuTextColor">@color/black</item>
         <item name="android:textColor">#000000</item>
+        <item name="android:subtitleTextColor">#000000</item>
 
     </style>
 
@@ -46,5 +58,6 @@
     <style name="Theme.OnionChat.NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
+
     </style>
 </resources>

@@ -6,7 +6,7 @@ import com.onionchat.dr0id.messaging.MessageParseException
 import com.onionchat.dr0id.messaging.SymmetricMessage
 import org.json.JSONObject
 
-class TextMessageData(val text: String, val formatInfo: String)
+class TextMessageData(val text: String, val formatInfo: String, val quotedMessageId :String = "")
 
 open class TextMessage(
     messageId: String = java.util.UUID.randomUUID().toString(),
@@ -17,7 +17,8 @@ open class TextMessage(
     messageStatus: Int = 0,
     created: Long = System.currentTimeMillis(),
     read: Int = 0,
-    type: Int = MessageTypes.TEXT_MESSAGE.ordinal
+    type: Int = MessageTypes.TEXT_MESSAGE.ordinal,
+    extra: String = ""
 ) : SymmetricMessage(
     messageId,
     createPayload(textData),
@@ -27,8 +28,9 @@ open class TextMessage(
     messageStatus,
     created,
     read,
-    type
-), ITextMessage { // todo user base64
+    type,
+    extra
+), ITextMessage, IQuotableMessage { // todo user base64
 
 
     constructor(symmetricMessage: SymmetricMessage) : this(
@@ -39,7 +41,8 @@ open class TextMessage(
         symmetricMessage.signature,
         symmetricMessage.messageStatus,
         symmetricMessage.created,
-        symmetricMessage.read
+        symmetricMessage.read,
+        extra = symmetricMessage.extra
     )
 
     override fun getText(): TextMessageData {
@@ -54,10 +57,14 @@ open class TextMessage(
         @JvmStatic
         val PAYLOAD_TEXT_FORMAT = "format"
 
+        @JvmStatic
+        val PAYLOAD_QUOTED_MESSAGE_ID = "quoted_message_id"
+
         fun createPayload(text: TextMessageData): ByteArray {
             val content = JSONObject()
             content.put(PAYLOAD_TEXT, text.text)
             content.put(PAYLOAD_TEXT_FORMAT, text.formatInfo)
+            content.put(PAYLOAD_QUOTED_MESSAGE_ID, text.quotedMessageId)
             return content.toString().toByteArray()
         }
 
@@ -67,7 +74,15 @@ open class TextMessage(
                 Logging.e(TAG, "extractPayload [-] error while extract payload")
                 throw MessageParseException("Invalid payload", content.toString());
             }
-            return TextMessageData(content.getString(PAYLOAD_TEXT), content.getString(PAYLOAD_TEXT_FORMAT))
+            var quotedMessageId = ""
+            if(content.has(PAYLOAD_QUOTED_MESSAGE_ID)) {
+                quotedMessageId = content.getString(PAYLOAD_QUOTED_MESSAGE_ID)
+            }
+            return TextMessageData(content.getString(PAYLOAD_TEXT), content.getString(PAYLOAD_TEXT_FORMAT), quotedMessageId)
         }
+    }
+
+    override fun getQuotedMessageId(): String {
+        return textData.quotedMessageId
     }
 }

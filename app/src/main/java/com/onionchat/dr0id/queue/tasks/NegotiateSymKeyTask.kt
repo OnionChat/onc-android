@@ -3,6 +3,7 @@ package com.onionchat.dr0id.queue.tasks
 import com.onionchat.common.Crypto
 import com.onionchat.common.IDGenerator
 import com.onionchat.common.Logging
+import com.onionchat.dr0id.database.Conversation
 import com.onionchat.dr0id.database.KeyManager
 import com.onionchat.dr0id.database.UserManager
 import com.onionchat.dr0id.messaging.keyexchange.NegotiateSymKeyMessage
@@ -41,7 +42,7 @@ class NegotiateSymKeyTask(val user: User) : OnionTask<NegotiateSymKeyTask.Negoti
             )
 
         // enque dependency
-        val sendMessageResult = enqueueSubtask(SendMessageTask(responseSymMessage, UserManager.myId!!, user)).get()
+        val sendMessageResult = enqueueSubtask(SendMessageTask(responseSymMessage, Conversation(user = user))).get()
         return when {
             sendMessageResult.status == Status.SUCCESS -> {
                 NegotiateSymKeyResult(symAlias, Status.SUCCESS)
@@ -57,5 +58,9 @@ class NegotiateSymKeyTask(val user: User) : OnionTask<NegotiateSymKeyTask.Negoti
 
     override fun onUnhandledException(exception: java.lang.Exception): NegotiateSymKeyResult {
         return NegotiateSymKeyResult(status = Status.FAILURE, exception = exception)
+    }
+
+    companion object {
+        const val TAG = "NegotiateSymKeyTask"
     }
 }

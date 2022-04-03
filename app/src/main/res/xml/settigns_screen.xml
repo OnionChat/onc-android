@@ -7,7 +7,7 @@
             app:key="@string/key_notifications"
             app:title="Enable notifications" />
         <SwitchPreferenceCompat
-            app:defaultValue="true"
+            app:defaultValue="false"
             app:dependency="@string/key_notifications"
             app:key="@string/key_ping_notifications"
             app:summary="Enable notifications when pinged by a user"
@@ -43,6 +43,16 @@
             app:key="@string/key_default_add_all_users"
             app:summary="Forward broadcasts to all users by default. Your broadcast specific settings will override this rule."
             app:title="Forward to all by default" />
+    </PreferenceCategory>
+
+
+    <PreferenceCategory app:title="Energy">
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:key="@string/key_enable_powersafe"
+            app:summary="@string/summary_powersafe_mode"
+            app:title="Powersafe mode" />
+
     </PreferenceCategory>
     <!--
         <Preference

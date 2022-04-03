@@ -4,6 +4,7 @@ import android.content.Context
 import java.io.File
 import android.content.res.AssetManager
 import com.onionchat.common.Logging
+import com.onionchat.localstorage.PathProvider.getWebDir
 import java.io.FileOutputStream
 import java.io.InputStream
 import java.io.OutputStream
@@ -12,10 +13,7 @@ import java.lang.Exception
 
 object WebHelper {
 
-    @JvmStatic
-    fun getWebDir(context: Context) : File {
-        return File(context.getExternalFilesDir(null).toString() + "/web/")
-    }
+
 
 
     private fun copyFile(filename: String, destination: File, context: Context) {

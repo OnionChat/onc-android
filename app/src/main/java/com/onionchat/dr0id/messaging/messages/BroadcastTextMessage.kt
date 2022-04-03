@@ -9,6 +9,7 @@ import org.json.JSONObject
 
 
  // TODO check if from + label matches the broadcast id !!
+@Deprecated("All messages can be broadcast messages")
 class BroadcastTextMessage(
     private val broadcast: Broadcast,
     messageId: String = java.util.UUID.randomUUID().toString(),

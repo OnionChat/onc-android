@@ -2,11 +2,13 @@ package com.onionchat.dr0id.queue
 
 import android.content.Context
 import com.onionchat.common.Logging
+import java.util.*
 import java.util.concurrent.Callable
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import kotlin.collections.ArrayList
 
-abstract class OnionTask<K : OnionTask.Result> {
+abstract class OnionTask<K : OnionTask.Result>(val id: String = UUID.randomUUID().toString()) {
 
     private val subtaskExecutor: ExecutorService = Executors.newCachedThreadPool()
     private val subtasks = ArrayList<OnionFuture<Result>>()
@@ -37,7 +39,7 @@ abstract class OnionTask<K : OnionTask.Result> {
     fun <K : Result> enqueueSubtask(task: OnionTask<K>): OnionFuture<K> {
         Logging.d(TAG, "enqueue [+] enqueue subtask <$task>")
 
-        val future = OnionFuture(subtaskExecutor.submit(Callable {
+        val future = OnionFuture(subtaskExecutor, subtaskExecutor.submit(Callable {
             //OnionTaskProcessor.observers.forEach { it.onTaskEnqueued(task) } // todo valid?
             val res = task.dispatch(this.context)
             //OnionTaskProcessor.observers.forEach { it.onTaskFinished(task, res) }
@@ -47,9 +49,13 @@ abstract class OnionTask<K : OnionTask.Result> {
         return future
     }
 
-    fun <K : Result> enqueueDependencyTask(task: OnionTask<K>) {
+    fun <K : Result> enqueueFollowUpTask(task: OnionTask<K>): OnionFuture<K> {
         Logging.d(TAG, "enqueue [+] enqueue dependency <$task>")
-        OnionTaskProcessor.enqueue(task) // todo fire and forget :(
+        return OnionTaskProcessor.enqueue(task) // todo fire and forget :(
+    }
+    fun <K : Result> enqueueFollowUpTaskPriority(task: OnionTask<K>): OnionFuture<K> {
+        Logging.d(TAG, "enqueue [+] enqueue dependency <$task>")
+        return OnionTaskProcessor.enqueuePriority(task) // todo fire and forget :(
     }
 
     open class Result(val status: Status = Status.PENDING, val exception: java.lang.Exception?)

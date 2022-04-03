@@ -7,38 +7,44 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.Color
+import android.net.ConnectivityManager
+import android.net.LinkProperties
+import android.net.Network
+import android.net.NetworkCapabilities
 import android.os.*
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import com.onionchat.common.Logging
+import com.onionchat.common.MessageTypes
 import com.onionchat.common.SettingsManager
-import com.onionchat.connector.BackendConnector
-import com.onionchat.connector.IConnectorCallback
+import com.onionchat.connector.OnReceiveClientDataListener
 import com.onionchat.connector.http.OnionServer
 import com.onionchat.dr0id.MainActivity
 import com.onionchat.dr0id.R
 import com.onionchat.dr0id.connectivity.ConnectionManager
-import com.onionchat.dr0id.database.BroadcastManager
+import com.onionchat.dr0id.connectivity.ConnectionManager.registerConnectionStateChangeListener
+import com.onionchat.dr0id.connectivity.ConnectionStateChangeListener
+import com.onionchat.dr0id.connectivity.PingPayload
+import com.onionchat.dr0id.database.Conversation
 import com.onionchat.dr0id.database.UserManager
 import com.onionchat.dr0id.messaging.IMessage
 import com.onionchat.dr0id.messaging.SymmetricMessage
-import com.onionchat.dr0id.messaging.messages.BroadcastTextMessage
 import com.onionchat.dr0id.messaging.messages.IBroadcastMessage
 import com.onionchat.dr0id.messaging.messages.ITextMessage
 import com.onionchat.dr0id.queue.OnionFuture
 import com.onionchat.dr0id.queue.OnionTask
 import com.onionchat.dr0id.queue.OnionTaskProcessor
-import com.onionchat.dr0id.queue.tasks.ProcessPendingTask
-import com.onionchat.dr0id.queue.tasks.ReceiveMessageTask
-import com.onionchat.dr0id.queue.tasks.SendMessageTask
+import com.onionchat.dr0id.queue.tasks.*
+import com.onionchat.localstorage.messagestore.EncryptedMessage
 import com.onionchat.localstorage.userstore.Broadcast
-import com.onionchat.localstorage.userstore.User
+import com.onionchat.localstorage.userstore.PingInfo
+import java.io.InputStream
 import java.lang.System.exit
 import java.util.*
 import kotlin.collections.ArrayList
 
 
-class OnionChatConnectionService : Service(), OnionTaskProcessor.OnionTaskProcessorObserver {
+class OnionChatConnectionService : Service(), OnionTaskProcessor.OnionTaskProcessorObserver, ConnectionStateChangeListener {
 
     val TAG = "OnionChatConnectionService"
 
@@ -47,13 +53,14 @@ class OnionChatConnectionService : Service(), OnionTaskProcessor.OnionTaskProces
     val NOTIFICATION_CHANNEL_MESSAGES = "notification_messages"
 
     interface ServiceClient {
-        fun onReceiveMessage(message: IMessage): Boolean
-        fun onPingReceived(user: String)
+        fun onReceiveMessage(message: IMessage?, encryptedMessage: EncryptedMessage): Boolean
+        fun onPingReceived(payload: PingPayload): Boolean
         fun onBroadcastAdded(broadcast: Broadcast)
+        fun onStreamRequested(inputStream: InputStream): Boolean
+        fun onConnectionStateChanged(state: ConnectionManager.ConnectionState)
     }
 
-    val cachedMessages = Collections.synchronizedList(ArrayList<IMessage>())
-    var serviceClients = Collections.synchronizedSet(HashSet<ServiceClient>())
+    var serviceClients = Collections.synchronizedList(ArrayList<ServiceClient>()) // todo WeakReference !?
 
 
     private val binder = LocalBinder()
@@ -63,7 +70,7 @@ class OnionChatConnectionService : Service(), OnionTaskProcessor.OnionTaskProces
 
 
         // If we get killed, after returning from here, restart
-        return START_STICKY
+        return START_NOT_STICKY//START_STICKY
     }
 
 
@@ -74,74 +81,151 @@ class OnionChatConnectionService : Service(), OnionTaskProcessor.OnionTaskProces
 
 
     override fun onBind(intent: Intent): IBinder {
-        Logging.d("OnionChatConnectionService", "onBind()")
+        Logging.d(TAG, "onBind()")
         return binder
     }
 
 
     override fun onCreate() {
-        startForeground(101, buildForegroundNotification())
+//
 
         OnionTaskProcessor.addObserver(this)
-
-        Logging.d(TAG, "Applying wakelock")
-        val wakeLock: PowerManager.WakeLock =
-            (getSystemService(Context.POWER_SERVICE) as PowerManager).run { // todo make optional
-                newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "OnionChat::keepListeningForMessages").apply {
-                    acquire() // todo add timeout !?
-                }
-            }
-
-        BackendConnector.registerOnReceiveCallback { type, data ->
-            when (type) {
-                OnionServer.ReceiveDataType.PING -> {
-                    OnionTaskProcessor.enqueue(ProcessPendingTask())
-                    if (serviceClients.isEmpty()) {
-                        if (SettingsManager.getBooleanSetting(getString(R.string.key_ping_notifications), this)) {
-                            showNotification("You were pinged", "You have been pinged by a user. May you wanna chat?", "ping_channel")
-                        }
-                    } else {
-                        serviceClients.forEach {
-                            it.onPingReceived(data)
-                        }
+        if (!SettingsManager.getBooleanSetting(getString(R.string.key_enable_powersafe), this)) {
+            Logging.d(ProcessPendingTask.TAG, "run [+[ powersafe mode is disabled")
+            Logging.d(TAG, "Applying wakelock")
+            val wakeLock: PowerManager.WakeLock =
+                (getSystemService(Context.POWER_SERVICE) as PowerManager).run { // todo make optional
+                    newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "OnionChat::keepListeningForMessages").apply {
+                        acquire() // todo add timeout !?
                     }
                 }
-                OnionServer.ReceiveDataType.RESPONSEPUB -> {
-
-                }
-                OnionServer.ReceiveDataType.REQUESTPUB -> {
-
-                }
-                OnionServer.ReceiveDataType.SYMKEY -> {
-
-                }
-                OnionServer.ReceiveDataType.POSTMESSAGE -> {
-                    OnionTaskProcessor.enqueue(ReceiveMessageTask(data)).then { result ->
-                        if (result.status == OnionTask.Status.SUCCESS) {
-                            result.message?.let {
-                                onReceiveMessage(it)
-                            } ?: run {
-                                Logging.e(TAG, "oncreate [-] ReceiveMessageTask returned invalid result $result")
-                            }
-                        } else {
-                            // todo how to handle this?
-                        }
-                    }
-                }
-                else -> {
-                    Logging.e(TAG, "Unsupported message type <$type>")
-                }
-            }
+            startForeground(101, buildForegroundNotification())
         }
 
-        ConnectionManager.checkConnection(this@OnionChatConnectionService) {
-            Logging.d("OnionChatConnectionService", "service is connected")
-            UserManager.myId = BackendConnector.getConnector().getHostName(this@OnionChatConnectionService)
-            OnionTaskProcessor.enqueue(ProcessPendingTask()) // todo make more nice !
+
+        ConnectionManager.registerOnReceiveCallback(object : OnReceiveClientDataListener {
+            override fun onDownloadApk() {
+            }
+
+            override fun onReceive(type: OnionServer.ReceiveDataType, data: String) {
+                when (type) {
+                    OnionServer.ReceiveDataType.PING -> {
+                        OnionTaskProcessor.enqueuePriority(HandlePingTask(data)).then {
+                            val pingData = it.payload
+                            if (serviceClients.isEmpty()) {
+                                if (SettingsManager.getBooleanSetting(getString(R.string.key_ping_notifications), this@OnionChatConnectionService)) {
+                                    showNotification(getString(R.string.ping_notification_title), getString(R.string.ping_notification_message), "ping_channel")
+                                }
+                            } else {
+                                serviceClients.reversed().forEach { client ->
+                                    pingData?.let {
+                                        if (client.onPingReceived(it)) { // todo extract ping data ?
+                                            return@then
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    OnionServer.ReceiveDataType.RESPONSEPUB -> {
+
+                    }
+                    OnionServer.ReceiveDataType.REQUESTPUB -> {
+
+                    }
+                    OnionServer.ReceiveDataType.SYMKEY -> {
+
+                    }
+                    OnionServer.ReceiveDataType.POSTMESSAGE -> {
+                        Logging.d(TAG, "oncreate [+] onReceive [+] starting ReceiveMessageTask")
+
+                        OnionTaskProcessor.enqueuePriority(ReceiveMessageTask(data)).then { result ->
+                            if (result.status == OnionTask.Status.SUCCESS) {
+                                if (result.encryptedMessage == null) {
+                                    Logging.e(TAG, "oncreate [-] ReceiveMessageTask returned invalid result $result")
+                                } else {
+                                    onReceiveMessage(result.message, result.encryptedMessage)
+                                }
+                            } else {
+                                // todo how to handle this?
+                            }
+                            if (result.broadcast != null) { // todo check status
+                                onBroadcastAdded(result.broadcast)
+                            }
+                        }
+                    }
+                    else -> {
+                        Logging.e(TAG, "Unsupported message type <$type>")
+                    }
+                }
+            }
+
+            override fun onStreamRequested(inputStream: InputStream): Boolean {
+                var consumed = false
+                serviceClients.forEach {
+                    if (it.onStreamRequested(inputStream)) {
+                        consumed = true
+                    }
+                }
+                return consumed
+            }
+
+        })
+        UserManager.myId = ConnectionManager.getHostName(this)
+        registerConnectionStateChangeListener(this)
+        ConnectionManager.checkConnection().then {
+            Logging.d(TAG, "service is connected")
+//            UserManager.myId = BackendConnector.CONNECTOR?.getHostName(this@OnionChatConnectionService)
+            //OnionTaskProcessor.enqueue(ProcessPendingTask()) // todo make more nice !
         }
         val br: BroadcastReceiver = MyBroadCastReceiver()
         val filter = IntentFilter(ACTION_KILL_SERVICE)
         registerReceiver(br, filter);
+
+        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        connectivityManager?.let {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                it.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
+                    override fun onAvailable(network: Network) {
+                        //take action when network connection is gained
+                        Logging.d(TAG, "onAvailable [+] network status changed <$network>")
+                        onNetworkStatusChanged()
+                    }
+
+                    override fun onLosing(network: Network, maxMsToLive: Int) {
+                        super.onLosing(network, maxMsToLive)
+                        Logging.d(TAG, "onLosing [+] network status changed <$network>")
+                        onNetworkStatusChanged()
+                    }
+
+                    override fun onLost(network: Network) {
+                        super.onLost(network)
+                        Logging.d(TAG, "onLost [+] network status changed <$network>")
+                        onNetworkStatusChanged()
+                    }
+
+                    override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
+                        super.onCapabilitiesChanged(network, networkCapabilities)
+                        Logging.d(TAG, "onCapabilitiesChanged [+] network status changed <$network>")
+                        onNetworkStatusChanged()
+                    }
+
+                    override fun onLinkPropertiesChanged(network: Network, linkProperties: LinkProperties) {
+                        super.onLinkPropertiesChanged(network, linkProperties)
+                        Logging.d(TAG, "onLinkPropertiesChanged [+] network status changed <$network>")
+                        onNetworkStatusChanged()
+                    }
+
+                    override fun onBlockedStatusChanged(network: Network, blocked: Boolean) {
+                        super.onBlockedStatusChanged(network, blocked)
+                        Logging.d(TAG, "onBlockedStatusChanged [+] network status changed <$network>")
+                        onNetworkStatusChanged()
+                    }
+                })
+            } else {
+                // todo fix android M ?
+            }
+        }
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -178,8 +262,8 @@ class OnionChatConnectionService : Service(), OnionTaskProcessor.OnionTaskProces
 
         val b: NotificationCompat.Builder = NotificationCompat.Builder(this, channelId)
         b.setOngoing(true)
-            .setContentTitle(getString(R.string.connected))
-            .setContentText("OnionChat is connected in background and listening for messages")
+            .setContentTitle(getString(R.string.app_name))
+            .setContentText(getString(R.string.onion_chat_service_foregreound_message))
             .setSmallIcon(R.drawable.onion_pixel_green)
             .setTicker(getString(R.string.connected))
             .addAction(
@@ -191,7 +275,7 @@ class OnionChatConnectionService : Service(), OnionTaskProcessor.OnionTaskProces
 
     inner class MyBroadCastReceiver : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            Logging.d("OnionChatConnectionService", "kill foreground service")
+            Logging.d(TAG, "kill foreground service")
             if (intent.getAction().equals(ACTION_KILL_SERVICE)) {
                 this@OnionChatConnectionService.stopForeground(true)
                 stopSelf()
@@ -202,20 +286,14 @@ class OnionChatConnectionService : Service(), OnionTaskProcessor.OnionTaskProces
         }
     }
 
-    fun checkConnection(callback: IConnectorCallback) {
-        Logging.d("OnionChatConnectionService", "checkConnection()")
-        ConnectionManager.checkConnection(this@OnionChatConnectionService, callback)
+    fun checkConnection(): OnionFuture<CheckConnectionTask.CheckConnectionResult> {
+        Logging.d(TAG, "checkConnection()")
+        return ConnectionManager.checkConnection()
     }
 
     fun addClient(callback: ServiceClient) {
-        serviceClients.add(callback)
-        if (cachedMessages.size > 0) {
-            serviceClients.forEach { listener ->
-                cachedMessages.forEach { message ->
-                    listener.onReceiveMessage(message)
-                }
-            }
-            cachedMessages.clear()
+        if (!serviceClients.contains(callback)) {
+            serviceClients.add(0, callback)
         }
     }
 
@@ -281,7 +359,7 @@ class OnionChatConnectionService : Service(), OnionTaskProcessor.OnionTaskProces
 //                        if (!forwardedSignatures.contains(message.signature)) {
 //                            Communicator.sendMessage(it.id, encoded_message) { status ->
 //                                if (status == Communicator.MessageSentStatus.SENT) {
-//                                    Logging.d("OnionChatConnectionService", "Successfully forwarded message to user <" + it.getName() + ">")
+//                                    Logging.d(TAG, "Successfully forwarded message to user <" + it.getName() + ">")
 //                                }
 //                            }
 //                            forwardedSignatures.add(message.signature)
@@ -293,41 +371,43 @@ class OnionChatConnectionService : Service(), OnionTaskProcessor.OnionTaskProces
 //        forwardedSignatures.add(message.signature)
 //    }
 
-    fun onReceiveMessage(message: IMessage): Boolean {
-        Logging.d("OnionChatConnectionService", "onReceiveMessage [+] message <" + message + ">")
+    fun onReceiveMessage(message: IMessage?, encryptedMessage: EncryptedMessage): Boolean {
+        Logging.d(TAG, "onReceiveMessage [+] message <" + message + ">")
         // broadcast check for broadcasts to be added
-        if (message is BroadcastTextMessage) { // todo will this still work ?
-            var broadcast = BroadcastManager.getBroadcastById(message.getBroadcast().id).get()
-            if (broadcast == null) {
-                val allowed = SettingsManager.getBooleanSetting(getString(R.string.key_allow_broadcast_adding), this)
-                if (allowed) {
-                    broadcast = Broadcast(message.getBroadcast().id, message.getBroadcast().label)
-                    BroadcastManager.addBroadcast(broadcast)
-                    val default_add_all_users = SettingsManager.getBooleanSetting(getString(R.string.key_default_add_all_users), this)
-                    if (default_add_all_users) {
-                        BroadcastManager.addUsersToBroadcast(broadcast, UserManager.getAllUsers().get())
-                    }
-                    onBroadcastAdded(broadcast)
-                }
-                Logging.d("OnionChatConnectionService", "onReceiveMessage [+] broadcast auto add disabled")
-            }
-//            if (doForward) {
-//                message.getEncryptedMessage()?.let {
-//                    OnionTaskProcessor.enqueue(ForwardMessageTask(it))
-//                } ?: kotlin.run {
-//                    Logging.e(TAG, "onReceiveMeessage [-] unable to forward broadcast message")
+
+
+//        if (message is BroadcastTextMessage) { // todo will this still work ?
+//            var broadcast = BroadcastManager.getBroadcastById(message.getBroadcast().id).get()
+//            if (broadcast == null) {
+//                val allowed = SettingsManager.getBooleanSetting(getString(R.string.key_allow_broadcast_adding), this)
+//                if (allowed) {
+//                    broadcast = Broadcast(message.getBroadcast().id, message.getBroadcast().label)
+//                    BroadcastManager.addBroadcast(broadcast)
+//                    val default_add_all_users = SettingsManager.getBooleanSetting(getString(R.string.key_default_add_all_users), this)
+//                    if (default_add_all_users) {
+//                        BroadcastManager.addUsersToBroadcast(broadcast, UserManager.getAllUsers().get())
+//                    }
+//                    onBroadcastAdded(broadcast)
 //                }
-//            } else {
-//                Logging.d("OnionChatConnectionService", "onReceiveMessage [+] message forwarding disabled")
+//                Logging.d(TAG, "onReceiveMessage [+] broadcast auto add disabled")
 //            }
-        }
+////            if (doForward) {
+////                message.getEncryptedMessage()?.let {
+////                    OnionTaskProcessor.enqueue(ForwardMessageTask(it))
+////                } ?: kotlin.run {
+////                    Logging.e(TAG, "onReceiveMeessage [-] unable to forward broadcast message")
+////                }
+////            } else {
+////                Logging.d(TAG, "onReceiveMessage [+] message forwarding disabled")
+////            }
+//        }
 
 
         // todo add check if listeners are registered !?
-        Logging.d("OnionChatConnectionService", "onReceiveMessage [+] serviceClients <" + serviceClients + ">")
+        Logging.d(TAG, "onReceiveMessage [+] serviceClients <" + serviceClients + ">")
         var consumed = false
         serviceClients.forEach {
-            if (it.onReceiveMessage(message)) {
+            if (it.onReceiveMessage(message, encryptedMessage)) {
                 consumed = true
             }
         }
@@ -337,6 +417,16 @@ class OnionChatConnectionService : Service(), OnionTaskProcessor.OnionTaskProces
                 var text = "You have received new messages. Click to show them up"
                 if (message is SymmetricMessage) {
                     tag = message.hashedFrom
+                    UserManager.getUserByHashedId(message.hashedFrom).get()?.let { it ->
+                        it.details?.let {
+                            if (it.isNotEmpty()) {
+                                it[0].alias.let {
+                                    tag = it
+                                }
+                            }
+                        }
+
+                    }
                 }
                 if (message is IBroadcastMessage) {
                     tag += "@${message.getBroadcast().label}"
@@ -344,24 +434,29 @@ class OnionChatConnectionService : Service(), OnionTaskProcessor.OnionTaskProces
                 if (message is ITextMessage) {
                     text = message.getText().text
                 }
-                showNotification(tag, text, NOTIFICATION_CHANNEL_MESSAGES)
+                if (MessageTypes.shouldShowPush(encryptedMessage.type)) {
+                    showNotification(tag, text, NOTIFICATION_CHANNEL_MESSAGES)
+                }
             }
-            cachedMessages.add(message)
         }
         return true
     }
 
-    fun deleteNotifications() {
+    fun deleteNotifications() { // todo this doesnt work !!
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.deleteNotificationChannel(NOTIFICATION_CHANNEL_MESSAGES);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            notificationManager.deleteNotificationChannel(NOTIFICATION_CHANNEL_MESSAGES)
+        } else {
+            // todo fix ?
+        }
     }
 
     fun sendMessage(
         message: IMessage,
         fromUID: String,
-        to: User
+        to: Conversation
     ): OnionFuture<SendMessageTask.SendMessageResult> {
-        return OnionTaskProcessor.enqueue(SendMessageTask(message, fromUID, to))
+        return OnionTaskProcessor.enqueuePriority(SendMessageTask(message, to))
     }
 
     override fun onTaskEnqueued(task: Any) {
@@ -370,5 +465,13 @@ class OnionChatConnectionService : Service(), OnionTaskProcessor.OnionTaskProces
     override fun onTaskFinished(task: Any, result: OnionTask.Result) {
     }
 
+    fun onNetworkStatusChanged() {
+        ConnectionManager.checkConnection()
+    }
 
+    override fun onConnectionStateChanged(state: ConnectionManager.ConnectionState) {
+        serviceClients.forEach {
+            it.onConnectionStateChanged(state)
+        }
+    }
 }

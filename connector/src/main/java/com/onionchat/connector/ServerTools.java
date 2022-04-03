@@ -6,6 +6,7 @@ import com.onionchat.common.Logging;
 
 import java.io.IOException;
 import java.net.ServerSocket;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class ServerTools {
     public static String TAG = "ServerTools";
@@ -19,5 +20,10 @@ public class ServerTools {
             // Could not connect.
             return true;
         }
+    }
+
+    public static int getRandomPort(int orientation) {
+        int randomNum = ThreadLocalRandom.current().nextInt(orientation, orientation+1000);
+        return randomNum;
     }
 }

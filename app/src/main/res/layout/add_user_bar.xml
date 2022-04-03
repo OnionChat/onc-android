@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    >
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/contact_list_fab"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="@dimen/fab_margin"
+        android:layout_marginBottom="16dp"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentRight="true"
+        android:backgroundTint="#00ff00"
+        app:srcCompat="@android:drawable/ic_input_add" />
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/contact_list_generate_fab"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="24dp"
+        app:fabSize="normal"
+        android:layout_above="@+id/contact_list_fab"
+        android:layout_alignParentRight="true"
+        android:visibility="invisible"
+        android:backgroundTint="#00ff00"
+        app:srcCompat="@drawable/baseline_qr_code_black_48"
+        />
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/contact_list_scan_fab"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="24dp"
+        app:fabSize="normal"
+        android:visibility="invisible"
+        android:layout_above="@+id/contact_list_generate_fab"
+        android:layout_alignParentRight="true"
+        app:srcCompat="@drawable/baseline_qr_code_scanner_black_48"
+        android:backgroundTint="#0000ff"
+        />
+
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/contact_list_create_broadcast"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="24dp"
+        app:fabSize="normal"
+        android:visibility="invisible"
+        android:layout_above="@+id/contact_list_scan_fab"
+        android:layout_alignParentRight="true"
+        app:srcCompat="@drawable/outline_group_add_black_36"
+        android:backgroundTint="#ffffff"
+        />
+</RelativeLayout>

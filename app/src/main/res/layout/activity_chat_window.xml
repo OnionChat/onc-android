@@ -16,6 +16,7 @@
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             android:background="?attr/colorPrimary"
+            app:subtitleTextColor="?android:attr/subtitleTextColor"
             app:popupTheme="@style/Theme.OnionChat.PopupOverlay" />
 
     </com.google.android.material.appbar.AppBarLayout>

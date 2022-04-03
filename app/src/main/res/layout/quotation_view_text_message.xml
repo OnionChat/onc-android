@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/bubble_space"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="?attr/bubbleBackground"
+    android:paddingEnd="5dp"
+    android:paddingStart="5dp"
+    android:paddingTop="2dp"
+    android:paddingBottom="2dp"
+    android:orientation="vertical"
+    android:backgroundTint="?attr/quotesBackground"
+    >
+    <TextView
+        android:id="@+id/quotation_view_text_item_username"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:text="username"
+        android:textSize="11sp"
+        android:visibility="gone"
+        android:maxLines="1"
+        />
+
+    <TextView
+        android:id="@+id/quotation_view_text_item_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="item"
+        android:textStyle="italic"
+        android:textColor="?android:attr/textColorPrimary"
+        android:textAppearance="@style/TextAppearance.AppCompat.Small"
+        android:layout_margin="7dp"
+        android:layout_weight="1"/>
+    <TextView
+        android:id="@+id/quotation_view_text_item_time"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:text="time"
+        android:textSize="11sp"
+        />
+
+
+</LinearLayout>

@@ -1,6 +1,7 @@
 package com.onionchat.connector.http
 
 import com.onionchat.common.Logging
+import com.onionchat.connector.OnReceiveClientDataListener
 import com.onionchat.connector.ServerTools
 import io.ktor.application.*
 import io.ktor.features.*
@@ -10,16 +11,18 @@ import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.server.engine.*
-import io.ktor.server.jetty.*
+//import io.ktor.server.jetty.*
+import io.ktor.server.cio.*
 import java.io.File
 import java.io.InputStream
-import java.io.OutputStream
 
 //import com.sun.net.httpserver.HttpServer
 
-class HttpServerSettings(val enable_web: Boolean)
+class OnionServerSettings(val enable_web: Boolean, val attachmentPath: File, val webPath: File, val apkPath:File)
 
-class OnionServer(val httpServerCallback: HttpServerCallback, val usedPort: Int, settings: HttpServerSettings) {
+data class OnionServerInformation(val port:Int)
+
+class OnionServer(private val mOnReceiveClientDataListener: OnReceiveClientDataListener, val usedPort: Int, val settings: OnionServerSettings) {
 
     enum class ReceiveDataType {
         POSTMESSAGE,
@@ -29,16 +32,12 @@ class OnionServer(val httpServerCallback: HttpServerCallback, val usedPort: Int,
         SYMKEY
     }
 
-    interface HttpServerCallback {
-        fun onBound(port: Int)
-        fun onReceive(type: ReceiveDataType, data: String?)
-        fun onFail(error: Exception?)
-        fun onDownloadApk(): String
-        fun getWebFolder(): String
-        fun onStreamRequested(inputStream: InputStream): Boolean
-    }
+
 
     companion object {
+
+        const val WEB_URL_ATTACHMENT = "/attachment/"
+
         @JvmStatic
         var startPort = 23001
 
@@ -48,27 +47,26 @@ class OnionServer(val httpServerCallback: HttpServerCallback, val usedPort: Int,
         var server: OnionServer? = null
 
         @JvmStatic
-        fun startService(httpServerCallback: HttpServerCallback, settings: HttpServerSettings): Boolean {
+        fun startOnionServer(onReceiveClientDataListener: OnReceiveClientDataListener, settings: OnionServerSettings): OnionServerInformation {
             Logging.d(TAG, "Start new server")
             if (server == null) {
                 while (ServerTools.isServerSocketInUse(startPort)) {
-                    startPort++
+                    startPort = ServerTools.getRandomPort(startPort)
                 }
-                server = OnionServer(httpServerCallback, startPort, settings)
+                server = OnionServer(onReceiveClientDataListener, startPort, settings)
                 server?.server?.start(false)
             }
-            httpServerCallback.onBound(startPort)
-            Logging.d(TAG, "Start new server done")
-            return true
+            Logging.d(TAG, "Start new server done <${startPort}>")
+            return OnionServerInformation(startPort)
         }
     }
 
 
     private val server by lazy {
-        embeddedServer(Jetty, usedPort, watchPaths = emptyList(), host = "127.0.0.1") {
+        embeddedServer(CIO, usedPort, watchPaths = emptyList(), host = "127.0.0.1") {
             //install(WebSockets)
             install(CallLogging)
-            val webFolder = File(httpServerCallback.getWebFolder())
+            val webFolder = settings.webPath
             routing {
                 post("/requestpub") {
                     val body = call.receiveText()
@@ -79,7 +77,7 @@ class OnionServer(val httpServerCallback: HttpServerCallback, val usedPort: Int,
                             Logging.e(TAG, "Expecting empty User-Agent field. Abort.")
                         } else {
                             try {
-                                httpServerCallback.onReceive(ReceiveDataType.REQUESTPUB, body)
+                                mOnReceiveClientDataListener.onReceive(ReceiveDataType.REQUESTPUB, body)
                             } catch (e: Exception) {
                                 Logging.e(TAG, "Error while process message. abort", e)
                                 throw e
@@ -100,7 +98,7 @@ class OnionServer(val httpServerCallback: HttpServerCallback, val usedPort: Int,
                             Logging.e(TAG, "Expecting empty User-Agent field. Abort.")
                         } else {
                             try {
-                                httpServerCallback.onReceive(ReceiveDataType.RESPONSEPUB, body)
+                                mOnReceiveClientDataListener.onReceive(ReceiveDataType.RESPONSEPUB, body)
                             } catch (e: Exception) {
                                 Logging.e(TAG, "Error while process message. abort", e)
                                 throw e
@@ -116,7 +114,7 @@ class OnionServer(val httpServerCallback: HttpServerCallback, val usedPort: Int,
                     //val body = call.receiveText()
                     Logging.d(TAG, "Received stream request")
                     call.receive<InputStream>().use { stream ->
-                        httpServerCallback.onStreamRequested(stream)
+                        mOnReceiveClientDataListener.onStreamRequested(stream)
                     }
 
 //                    call.respondOutputStream(ContentType.parse("application/octet-stream"), status = HttpStatusCode.OK) {
@@ -134,7 +132,7 @@ class OnionServer(val httpServerCallback: HttpServerCallback, val usedPort: Int,
                             Logging.e(TAG, "Expecting empty User-Agent field. Abort.")
                         } else {
                             try {
-                                httpServerCallback.onReceive(ReceiveDataType.SYMKEY, body)
+                                mOnReceiveClientDataListener.onReceive(ReceiveDataType.SYMKEY, body)
                             } catch (e: Exception) {
                                 Logging.e(TAG, "Error while process message. abort", e)
                                 throw e
@@ -155,7 +153,7 @@ class OnionServer(val httpServerCallback: HttpServerCallback, val usedPort: Int,
                             Logging.e(TAG, "Expecting empty User-Agent field. Abort.")
                         } else {
                             try {
-                                httpServerCallback.onReceive(ReceiveDataType.POSTMESSAGE, body)
+                                mOnReceiveClientDataListener.onReceive(ReceiveDataType.POSTMESSAGE, body)
                             } catch (e: Exception) {
                                 Logging.e(TAG, "Error while process message. abort", e)
                                 throw e
@@ -168,8 +166,9 @@ class OnionServer(val httpServerCallback: HttpServerCallback, val usedPort: Int,
                     )
                 }
                 get("/onionchat.apk") {
+                    mOnReceiveClientDataListener.onDownloadApk()
                     call.respondFile(
-                        file = File(httpServerCallback.onDownloadApk())
+                        file = settings.apkPath
                     )
                 }
                 post("/ping") {
@@ -181,14 +180,20 @@ class OnionServer(val httpServerCallback: HttpServerCallback, val usedPort: Int,
                         if (!it.isEmpty()) {
                             Logging.e(TAG, "Expecting empty User-Agent field. Abort.")
                         } else {
-                            httpServerCallback.onReceive(ReceiveDataType.PING, body)
+                            mOnReceiveClientDataListener.onReceive(ReceiveDataType.PING, body)
                         }
                     }
-                    Logging.d(TAG, "Received ping body <" + body + ">")
+                    Logging.d(TAG, "Received ping body <$body>")
                     call.respondText(
                         text = "ok",
                         contentType = ContentType.Text.Plain
                     )
+                }
+                static(WEB_URL_ATTACHMENT) { // todo make those strings a constant
+                    Logging.d(TAG, "Setup attachment access to folder <" + webFolder.absolutePath + ">")
+                    file(".")
+                    files(settings.attachmentPath)
+                    resources(settings.attachmentPath.absolutePath)
                 }
                 if (settings.enable_web) {
                     static("/web") {

@@ -15,6 +15,7 @@ abstract class UserDao {
         val users = mutableListOf<User>()
         getAllJoined().forEach {
             it.user.symaliases = it.symaliases
+            it.user.details = it.details
             users.add(it.user)
         }
         return users
@@ -29,6 +30,7 @@ abstract class UserDao {
         val users = mutableListOf<User>()
         loadAllByIds((userIds)).forEach {
             it.user.symaliases = it.symaliases
+            it.user.details = it.details
             users.add(it.user)
         }
         return users

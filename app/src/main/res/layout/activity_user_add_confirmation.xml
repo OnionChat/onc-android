@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".adduser.UserAddConfirmationActivity"
+    tools:context=".ui.adduser.UserAddConfirmationActivity"
     android:padding="20dp">
 
 
@@ -25,14 +25,20 @@
         android:padding="10dp"
         android:layout_below="@+id/user_add_confirmation__avatar"
         />
-
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/user_add_confirmation_user_id"
+        android:padding="10dp"
+        android:layout_below="@+id/user_add_confirmation_user_label"
+        />
 
 
     <LinearLayout
         android:id="@+id/button_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_below="@+id/user_add_confirmation_user_label"
+        android:layout_below="@+id/user_add_confirmation_user_id"
         android:orientation="horizontal"
         android:padding="5dp">
 
@@ -42,8 +48,9 @@
             android:layout_height="wrap_content"
             android:layout_margin="5dp"
             android:layout_weight="1"
-            android:src="@drawable/outline_delete_black_24"
-            android:backgroundTint="?attr/colorPrimary"/>
+            android:backgroundTint="@android:color/holo_green_light"
+
+            android:src="@drawable/baseline_check_circle_black_48" />
 
         <ImageButton
             android:id="@+id/user_add_confirmation_button_negative"
@@ -51,8 +58,8 @@
             android:layout_height="wrap_content"
             android:layout_margin="5dp"
             android:layout_weight="1"
-            android:src="@drawable/outline_preview_black_24"
-            android:backgroundTint="?attr/colorPrimary"/>
+            android:backgroundTint="@android:color/holo_red_light"
+            android:src="@drawable/baseline_dangerous_black_48" />
 
     </LinearLayout>
 

@@ -5,9 +5,7 @@ import com.onionchat.common.MessageTypes
 import com.onionchat.dr0id.messaging.keyexchange.RequestPubMessage
 import com.onionchat.dr0id.messaging.keyexchange.ResponsePubMessage
 import com.onionchat.dr0id.messaging.keyexchange.NegotiateSymKeyMessage
-import com.onionchat.dr0id.messaging.messages.BroadcastTextMessage
-import com.onionchat.dr0id.messaging.messages.MessageReadMessage
-import com.onionchat.dr0id.messaging.messages.TextMessage
+import com.onionchat.dr0id.messaging.messages.*
 import com.onionchat.localstorage.messagestore.EncryptedMessage
 import java.security.Key
 import java.security.cert.Certificate
@@ -223,10 +221,10 @@ object MessageProcessor {
                 return message
             }
             MessageTypes.TEXT_MESSAGE.ordinal -> {
-                if (sourcePub == null) {
-                    Logging.e(TAG, "unpack [-] TextMessage needs sourcePub set [-] unable to send message")
-                    return null;
-                }
+//                if (sourcePub == null) {
+//                    Logging.e(TAG, "unpack [-] TextMessage needs sourcePub set [-] unable to send message") // todo how to deal with it
+//                    //return null;
+//                }
 
                 val message = SymmetricMessage.decrypt(encryptedMessage, sourcePub)?.let { TextMessage(it) }
                 if (message == null) {
@@ -236,8 +234,8 @@ object MessageProcessor {
             }
             MessageTypes.BROADCAST_TEXT_MESSAGE.ordinal -> {
                 if (sourcePub == null) {
-                    Logging.e(TAG, "unpack [-] TextMessage needs sourcePub set [-] unable to send message")
-                    return null;
+                    Logging.e(TAG, "unpack [-] TextMessage needs sourcePub set [-] unable to send message") // todo how to deal with it
+                    //return null;
                 }
 
                 val message = SymmetricMessage.decrypt(encryptedMessage, sourcePub)?.let { BroadcastTextMessage(it) }
@@ -255,6 +253,66 @@ object MessageProcessor {
                 val message = SymmetricMessage.decrypt(encryptedMessage, sourcePub)?.let { MessageReadMessage(it) }
                 if (message == null) {
                     Logging.e(TAG, "unpack [-] unable to decrypt and parse MessageReadMessage")
+                }
+                return message
+            }
+            MessageTypes.REQUEST_CONTACT_DETAILS_MESSAGE.ordinal -> {
+                if (sourcePub == null) {
+                    Logging.e(TAG, "unpack [-] RequestContactDetailsMessage needs sourcePub set [-] unable to send message")
+                    return null;
+                }
+
+                val message = SymmetricMessage.decrypt(encryptedMessage, sourcePub)?.let { RequestContactDetailsMessage(it) }
+                if (message == null) {
+                    Logging.e(TAG, "unpack [-] unable to decrypt and parse RequestContactDetailsMessage")
+                }
+                return message
+            }
+            MessageTypes.PROVIDE_CONTACT_DETAILS_MESSAGE.ordinal -> {
+                if (sourcePub == null) {
+                    Logging.e(TAG, "unpack [-] ProvideContactDetailsMessage needs sourcePub set [-] unable to send message")
+                    return null;
+                }
+
+                val message = SymmetricMessage.decrypt(encryptedMessage, sourcePub)?.let { ProvideContactDetailsMessage(it) }
+                if (message == null) {
+                    Logging.e(TAG, "unpack [-] unable to decrypt and parse ProvideContactDetailsMessage")
+                }
+                return message
+            }
+            MessageTypes.ATTACHMENT_MESSAGE.ordinal -> {
+                if (sourcePub == null) {
+                    Logging.e(TAG, "unpack [-] AttachmentMessage needs sourcePub set [-] unable to send message")
+                    return null;
+                }
+
+                val message = SymmetricMessage.decrypt(encryptedMessage, sourcePub)?.let { AttachmentMessage(it) }
+                if (message == null) {
+                    Logging.e(TAG, "unpack [-] unable to decrypt and parse AttachmentMessage")
+                }
+                return message
+            }
+            MessageTypes.PROVIDE_SYM_KEY_MESSAGE.ordinal -> {
+                if (sourcePub == null) {
+                    Logging.e(TAG, "unpack [-] ProvideSymKeyMessage needs sourcePub set [-] unable to send message")
+                    return null;
+                }
+
+                val message = SymmetricMessage.decrypt(encryptedMessage, sourcePub)?.let { ProvideSymKeyMessage(it) }
+                if (message == null) {
+                    Logging.e(TAG, "unpack [-] unable to decrypt and parse ProvideSymKeyMessage")
+                }
+                return message
+            }
+            MessageTypes.REQUEST_SYN_KEY_MESSAGE.ordinal -> {
+                if (sourcePub == null) {
+                    Logging.e(TAG, "unpack [-] RequestSymKeyMessage needs sourcePub set [-] unable to send message")
+                    return null;
+                }
+
+                val message = SymmetricMessage.decrypt(encryptedMessage, sourcePub)?.let { RequestSymKeyMessage(it) }
+                if (message == null) {
+                    Logging.e(TAG, "unpack [-] unable to decrypt and parse RequestSymKeyMessage")
                 }
                 return message
             }

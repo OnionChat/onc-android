@@ -5,6 +5,7 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.onionchat.common.Logging
+import com.onionchat.localstorage.userstore.Broadcast
 import org.json.JSONObject
 
 
@@ -21,7 +22,9 @@ data class EncryptedMessage(
     @ColumnInfo(name = "type") var type: Int,
     @ColumnInfo(name = "extra") var extra: String = ""
 ) {
-
+    fun getBroadcast(): Broadcast? {
+        return Broadcast.createFromPayload(extra)
+    }
 
     companion object {
 
@@ -37,6 +40,7 @@ data class EncryptedMessage(
             content.put("created", encryptedMessage.created)
             content.put("type", encryptedMessage.type)
             content.put("extra", encryptedMessage.extra)
+            content.put("version", 2)
             return content.toString()
         }
 

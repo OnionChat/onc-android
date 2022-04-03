@@ -4,6 +4,8 @@ import android.app.AlertDialog
 import android.content.DialogInterface
 import android.content.Intent
 import android.os.Bundle
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
 import android.widget.ImageButton
 import android.widget.ImageView
@@ -22,9 +24,12 @@ import com.onionchat.dr0id.queue.OnionTaskProcessor
 import com.onionchat.dr0id.queue.tasks.NegotiateSymKeyTask
 import com.onionchat.dr0id.ui.contactlist.ContactListAdapter
 import com.onionchat.localstorage.EncryptedLocalStorage
-import com.onionchat.localstorage.userstore.Conversation
+import com.onionchat.dr0id.database.Conversation
+import com.onionchat.dr0id.queue.tasks.CheckConnectionTask
+import com.onionchat.dr0id.ui.errorhandling.ErrorViewer
+import com.onionchat.dr0id.ui.errorhandling.ErrorViewer.showError
 
-
+// todo refactore
 class ContactDetailsActivity : OnionChatActivity(), ContactListAdapter.ItemClickListener {
 
     companion object {
@@ -35,15 +40,18 @@ class ContactDetailsActivity : OnionChatActivity(), ContactListAdapter.ItemClick
         val EXTRA_BROADCAST_ID = "broadcast_id"
     }
 
-    lateinit var conversation: Conversation
+    var conversation: Conversation? = null
     var adapter: ContactListAdapter? = null
     var conversations: ArrayList<Conversation> = ArrayList();
     lateinit var recyclerView: RecyclerView
+    var keyInfoTextView :TextView? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_contact_details)
         setSupportActionBar(findViewById(R.id.toolbar))
+        getSupportActionBar()?.setDisplayHomeAsUpEnabled(true);
+
         recyclerView = findViewById(R.id.contact_details_receivers_selection)
         recyclerView.setLayoutManager(LinearLayoutManager(this));
         adapter = ContactListAdapter(conversations, true)
@@ -54,6 +62,12 @@ class ContactDetailsActivity : OnionChatActivity(), ContactListAdapter.ItemClick
         intent.getStringExtra(EXTRA_CONTACT_ID)?.let { uid ->
             setTitle(IDGenerator.toHashedId(uid))
 
+            findViewById<ImageButton>(R.id.activity_contact_details_open_webbutton).let {
+                it.setOnClickListener {
+                    Logging.d(TAG, "onCreate [+] open contact details ${uid}")
+                    openContactWebSpace(uid)
+                }
+            }
 
             findViewById<ImageView>(R.id.activity_contact_details_avatar).let { imageView ->
                 Conversation.getRepresentativeProfileBitmap(IDGenerator.toHashedId(uid))?.let {
@@ -84,27 +98,17 @@ class ContactDetailsActivity : OnionChatActivity(), ContactListAdapter.ItemClick
                 }
             }
 
-            findViewById<TextView>(R.id.activity_contact_details_key_info)?.let { textView ->
-                conversation.user?.let { user ->
+            keyInfoTextView = findViewById(R.id.activity_contact_details_key_info)
+            keyInfoTextView?.let { textView ->
+                conversation?.user?.let { user ->
                     user.getLastAlias()?.let {
                         textView.text = IDGenerator.toHashedId(it.id)
                     }
-                    textView.setOnClickListener {
-                        Logging.d(TAG, "enqueue negotiation task")
-                        OnionTaskProcessor.enqueue(NegotiateSymKeyTask(user)).then { result ->
-                            Logging.d(TAG, "finished negotiation task $result")
-                            if (result.status == OnionTask.Status.SUCCESS) {
-                                runOnUiThread {
-                                    result.newAlias?.let {
-                                        textView.text = IDGenerator.toHashedId(it.id)
-                                    }
-                                }
-                            }
-                        }
-                    }
+
                 }
 
             }
+
         }
         intent.getStringExtra(EXTRA_BROADCAST_ID)?.let {
             val broadcast = BroadcastManager.getBroadcastById(it).get()
@@ -124,15 +128,12 @@ class ContactDetailsActivity : OnionChatActivity(), ContactListAdapter.ItemClick
             }
         }
 
-        findViewById<ImageButton>(R.id.activity_contact_details_open_webbutton).let {
-            it.setOnClickListener {
-                conversation.user?.let {
-                    openContactWebSpace(it)
-                }
-            }
-        }
         findViewById<ImageButton>(R.id.activity_contact_details_block).let {
 
+        }
+        val conversation = conversation
+        if(conversation == null) {
+            return
         }
         findViewById<ImageButton>(R.id.activity_contact_details_delete_button).let {
             it.setOnClickListener {
@@ -155,7 +156,7 @@ class ContactDetailsActivity : OnionChatActivity(), ContactListAdapter.ItemClick
         }
     }
 
-    override fun onConnected(success: Boolean) {
+    override fun onCheckConnectionFinished(status: CheckConnectionTask.CheckConnectionResult) {
     }
 
     fun showReallyDeleteUserDialog(label: String, callback: (Boolean) -> Unit) {
@@ -189,7 +190,7 @@ class ContactDetailsActivity : OnionChatActivity(), ContactListAdapter.ItemClick
     }
 
     override fun onCheckedChangeListener(position: Int) {
-        conversation.broadcast?.let {
+        conversation?.broadcast?.let {
 
             if (conversations[position].selected) {
                 BroadcastManager.addUsersToBroadcast(it, arrayListOf(conversations[position].user!!))
@@ -198,5 +199,45 @@ class ContactDetailsActivity : OnionChatActivity(), ContactListAdapter.ItemClick
                 BroadcastManager.deleteUsersFromBroadcast(it, arrayOf(conversations[position].user!!.id))
             }
         }
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        menuInflater.inflate(R.menu.contact_details_menu, menu)
+        return true
+    }
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        val id: Int = item.getItemId()
+        when (id) {
+            android.R.id.home -> {
+                onBackPressed()
+            }
+            R.id.open_stats -> {
+                conversation?.user?.let {
+                    openStatsActivity(it)
+                }
+            }
+
+            R.id.refresh_keys -> {
+                conversation?.user?.let {
+                    Logging.d(TAG, "enqueue negotiation task")
+                    OnionTaskProcessor.enqueue(NegotiateSymKeyTask(it)).then { result ->
+                        Logging.d(TAG, "finished negotiation task $result")
+                        if (result.status == OnionTask.Status.SUCCESS) {
+                            runOnUiThread {
+                                result.newAlias?.let {
+                                    keyInfoTextView?.text = IDGenerator.toHashedId(it.id)
+                                }
+                            }
+                        } else {
+                            showError(this, getString(R.string.error_key_negotiation_failed), ErrorViewer.ErrorCode.KEY_NEGOTIATION_FAILED)
+                        }
+                    }
+                }
+            }
+
+            else -> {
+            }
+        }
+        return true
     }
 }
